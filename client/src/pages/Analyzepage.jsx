@@ -6,10 +6,12 @@ export default function AnalyzePage() {
   const navigate = useNavigate();
   const [repoUrl, setRepoUrl] = useState("");
 
-  const handleAnalyze = async (e) => {
+ // In your AnalyzePage.jsx, update the handleAnalyze function:
+const handleAnalyze = async (e) => {
   e.preventDefault();
-
+  
   console.log("Analyzing:", repoUrl);
+  setLoading(true);
 
   try {
     const response = await fetch("http://localhost:5000/analyzepage", {
@@ -20,14 +22,22 @@ export default function AnalyzePage() {
       body: JSON.stringify({ repoUrl }),
     });
 
-    const data = await response.json(); // ✅ DEFINE data here
-
+    const data = await response.json();
     console.log("Backend response:", data);
-
-    navigate("/homepage", { state: { analysis: data } });
+    
+    // Navigate to homepage with the analysis data
+    navigate("/homepage", { 
+      state: { 
+        analysis: data,
+        repoUrl: repoUrl 
+      } 
+    });
 
   } catch (error) {
     console.error("Error analyzing repo:", error);
+    // You might want to show an error message to the user here
+  } finally {
+    setLoading(false);
   }
 };
 

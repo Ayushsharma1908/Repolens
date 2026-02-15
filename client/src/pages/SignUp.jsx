@@ -174,11 +174,6 @@ export default function SignUp() {
                     </button>
                   </div>
                   
-                  {/* Password Strength Indicator */}
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="w-2 h-2 bg-[#60A5FA] rounded-full"></div>
-                    <span className="text-xs text-[#94A3B8]">Strong password</span>
-                  </div>
                 </div>
 
                 {/* Create Account Button */}
