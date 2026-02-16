@@ -11,7 +11,17 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   PhotoIcon,
-  CpuChipIcon
+  CpuChipIcon,
+  // Add these new icons for categories
+  ComputerDesktopIcon,
+  ServerIcon,
+  CircleStackIcon,
+  WrenchScrewdriverIcon,
+  CloudIcon,
+  BeakerIcon,
+  DevicePhoneMobileIcon,
+  QuestionMarkCircleIcon,
+  ChevronUpIcon
 } from '@heroicons/react/24/outline';
 
 export default function HomePage() {
@@ -20,11 +30,14 @@ export default function HomePage() {
   const analysis = location.state?.analysis;
   const [expandedFolders, setExpandedFolders] = useState({});
   const [structure, setStructure] = useState([]);
+  const [expandedCategories, setExpandedCategories] = useState(false);
 
   useEffect(() => {
     if (analysis?.structure) {
       setStructure(analysis.structure);
     }
+    // Log to see what data we're getting
+    console.log("Analysis data:", analysis);
   }, [analysis]);
 
   const toggleFolder = (path) => {
@@ -38,38 +51,33 @@ export default function HomePage() {
   const getFileIcon = (filename) => {
     const extension = filename.split('.').pop().toLowerCase();
     
-    // Image files
     if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico'].includes(extension)) {
       return <PhotoIcon className="w-4 h-4 text-pink-400" />;
     }
-    // JavaScript/TypeScript files
     else if (['js', 'jsx', 'ts', 'tsx'].includes(extension)) {
       return <CodeBracketIcon className="w-4 h-4 text-yellow-400" />;
     }
-    // JSON files
     else if (extension === 'json') {
       return <CubeIcon className="w-4 h-4 text-orange-400" />;
     }
-    // CSS/SCSS files
     else if (['css', 'scss', 'sass', 'less'].includes(extension)) {
       return <CodeBracketIcon className="w-4 h-4 text-blue-400" />;
     }
-    // HTML files
     else if (['html', 'htm'].includes(extension)) {
       return <CodeBracketIcon className="w-4 h-4 text-red-400" />;
     }
-    // Markdown files
     else if (['md', 'markdown'].includes(extension)) {
       return <DocumentIcon className="w-4 h-4 text-purple-400" />;
     }
-    // Default
     else {
       return <DocumentIcon className="w-4 h-4 text-[#64748B]" />;
     }
   };
 
   const renderStructure = (items, level = 0, path = '') => {
-    return items.map((item, index) => {
+    if (!items || !Array.isArray(items)) return null;
+    
+    return items.map((item) => {
       const currentPath = `${path}/${item.name}`;
       const isExpanded = expandedFolders[currentPath];
       const indent = level * 16;
@@ -83,14 +91,12 @@ export default function HomePage() {
               onClick={() => toggleFolder(currentPath)}
             >
               <span className="text-[#94A3B8] group-hover:text-[#60A5FA] transition-colors">
-                {isExpanded ? (
-                  <ChevronDownIcon className="w-4 h-4" />
-                ) : (
-                  <ChevronRightIcon className="w-4 h-4" />
-                )}
+                {isExpanded ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
               </span>
               <FolderIcon className={`w-5 h-5 transition-colors ${isExpanded ? 'text-[#60A5FA]' : 'text-[#94A3B8] group-hover:text-[#60A5FA]'}`} />
-              <span className="text-gray-300 text-sm font-medium group-hover:text-white transition-colors">{item.name}</span>
+              <span className="text-gray-300 text-sm font-medium group-hover:text-white transition-colors">
+                {item.name}
+              </span>
             </div>
             {isExpanded && item.children && (
               <div className="border-l border-[#334155] ml-6 pl-2">
@@ -99,23 +105,26 @@ export default function HomePage() {
             )}
           </div>
         );
-      } else {
-        return (
-          <div 
-            key={currentPath}
-            className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 transition-all duration-200 group"
-            style={{ marginLeft: `${indent + 24}px` }}
-          >
-            {getFileIcon(item.name)}
-            <span className="text-gray-400 text-sm group-hover:text-white transition-colors">{item.name}</span>
-          </div>
-        );
       }
+
+      return (
+        <div 
+          key={currentPath}
+          className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 transition-all duration-200 group"
+          style={{ marginLeft: `${indent + 24}px` }}
+        >
+          {getFileIcon(item.name)}
+          <span className="text-gray-400 text-sm group-hover:text-white transition-colors">
+            {item.name}
+          </span>
+        </div>
+      );
     });
   };
 
   // Helper function to count files recursively
   const countFiles = (items) => {
+    if (!items) return 0;
     let count = 0;
     items.forEach(item => {
       if (item.type === 'file') count++;
@@ -126,6 +135,7 @@ export default function HomePage() {
 
   // Helper function to count directories recursively
   const countDirs = (items) => {
+    if (!items) return 0;
     let count = 0;
     items.forEach(item => {
       if (item.type === 'dir') {
@@ -136,20 +146,64 @@ export default function HomePage() {
     return count;
   };
 
-  // Get tech color based on technology name
-  const getTechColor = (tech) => {
-    const t = tech.toLowerCase();
-    if (t.includes('react') || t.includes('vue') || t.includes('angular')) return 'from-blue-500 to-cyan-500';
-    if (t.includes('node') || t.includes('express')) return 'from-green-500 to-emerald-500';
-    if (t.includes('python') || t.includes('django')) return 'from-yellow-500 to-orange-500';
-    if (t.includes('java') || t.includes('spring')) return 'from-red-500 to-pink-500';
-    if (t.includes('typescript') || t.includes('javascript')) return 'from-yellow-400 to-amber-500';
-    if (t.includes('postgres') || t.includes('mysql') || t.includes('mongodb')) return 'from-purple-500 to-indigo-500';
-    if (t.includes('prisma')) return 'from-teal-500 to-emerald-500';
-    if (t.includes('docker')) return 'from-blue-600 to-indigo-600';
-    if (t.includes('aws') || t.includes('cloud')) return 'from-orange-500 to-red-500';
-    return 'from-[#60A5FA] to-[#818CF8]';
+  const getCategoryIcon = (category) => {
+  const icons = {
+    languages: <CodeBracketIcon className="w-5 h-5" />,
+    frontend: <ComputerDesktopIcon className="w-5 h-5" />,
+    backend: <ServerIcon className="w-5 h-5" />,
+    database: <CircleStackIcon className="w-5 h-5" />,
+    ai_ml: <CpuChipIcon className="w-5 h-5" />,
+    devTools: <WrenchScrewdriverIcon className="w-5 h-5" />,
+    cloud: <CloudIcon className="w-5 h-5" />,
+    testing: <BeakerIcon className="w-5 h-5" />,
+    mobile: <DevicePhoneMobileIcon className="w-5 h-5" />,
+    other: <QuestionMarkCircleIcon className="w-5 h-5" />
   };
+  return icons[category] || icons.other;
+};
+
+
+  // Category display names
+  const categoryNames = {
+  languages: 'Languages',
+  frontend: 'Frontend',
+  backend: 'Backend',
+  database: 'Database',
+  ai_ml: 'AI/ML',
+  devTools: 'Dev Tools',
+  cloud: 'Cloud',
+  testing: 'Testing',
+  mobile: 'Mobile',
+  other: 'Other'
+};
+
+  // Category colors
+ const categoryColors = {
+  languages: 'from-indigo-500 to-blue-500',   // ADD THIS
+  frontend: 'from-blue-500 to-cyan-500',
+  backend: 'from-green-500 to-emerald-500',
+  database: 'from-purple-500 to-indigo-500',
+  ai_ml: 'from-pink-500 to-rose-500',
+  devTools: 'from-yellow-500 to-amber-500',
+  cloud: 'from-sky-500 to-blue-500',
+  testing: 'from-orange-500 to-red-500',
+  mobile: 'from-violet-500 to-purple-500',
+  other: 'from-gray-500 to-slate-500'
+};
+
+
+  // Get only categories that have technologies
+  const getActiveCategories = () => {
+    if (!analysis?.categorizedTech) return [];
+    return Object.entries(analysis.categorizedTech)
+      .filter(([_, techs]) => techs && Array.isArray(techs) && techs.length > 0)
+      .map(([category]) => category);
+  };
+
+  const activeCategories = getActiveCategories();
+  const previewLimit = 4;
+  const previewCategories = activeCategories.slice(0, previewLimit);
+  const hiddenCategories = activeCategories.slice(previewLimit);
 
   if (!analysis) {
     return (
@@ -244,8 +298,10 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center gap-2 bg-[#1A1F2E] px-4 py-2 rounded-xl border border-[#334155]">
                   <CodeBracketIcon className="w-4 h-4 text-[#60A5FA]" />
-                  <span className="text-sm text-[#94A3B8]">Languages:</span>
-                  <span className="text-white font-semibold">{analysis.techStack?.length || 0}</span>
+                  <span className="text-sm text-[#94A3B8]">Technologies:</span>
+                  <span className="text-white font-semibold">
+                    {analysis.categorizedTech ? Object.values(analysis.categorizedTech).flat().length : analysis.techStack?.length || 0}
+                  </span>
                 </div>
               </div>
             </div>
@@ -273,24 +329,120 @@ export default function HomePage() {
 
             {/* Tech Stack & Architecture */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Tech Stack */}
+              {/* Tech Stack - Categorized with Show More */}
               <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                     <CodeBracketIcon className="w-5 h-5 text-[#60A5FA]" />
                     Tech Stack
                   </h2>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {analysis.techStack?.map((tech, index) => (
-                    <span 
-                      key={index}
-                      className={`px-3 py-1.5 bg-gradient-to-r ${getTechColor(tech)} text-white rounded-lg text-xs font-medium shadow-lg`}
-                    >
-                      {tech}
+                  {analysis.categorizedTech && (
+                    <span className="text-xs text-[#60A5FA] bg-[#60A5FA]/10 px-3 py-1.5 rounded-full">
+                      {Object.values(analysis.categorizedTech).flat().length} technologies
                     </span>
-                  ))}
+                  )}
                 </div>
+
+                {analysis.categorizedTech ? (
+                  <div className="space-y-4">
+                    {/* Show preview categories */}
+                    {previewCategories.map(category => {
+                      const technologies = analysis.categorizedTech[category];
+                      if (!technologies || technologies.length === 0) return null;
+                      
+                      return (
+                        <div key={category} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-6 h-6 rounded-md bg-gradient-to-r ${categoryColors[category]} flex items-center justify-center text-white`}>
+                              {getCategoryIcon(category)}
+                            </div>
+                            <h3 className="text-sm font-semibold text-white">
+                              {categoryNames[category]}
+                            </h3>
+                            <span className="text-xs text-[#94A3B8]">
+                              ({technologies.length})
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 pl-8">
+                            {technologies.map((tech, index) => (
+                              <span
+                                key={index}
+                                className="px-2.5 py-1 bg-[#1A1F2E] text-[#94A3B8] rounded-lg text-xs font-medium border border-[#334155] hover:border-[#60A5FA] hover:text-white transition-all duration-200"
+                              >
+                                {tech}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Show More button for hidden categories */}
+                    {hiddenCategories.length > 0 && (
+                      <div className="space-y-4">
+                        <button
+                          onClick={() => setExpandedCategories(!expandedCategories)}
+                          className="flex items-center gap-2 text-[#60A5FA] hover:text-white transition-colors text-sm font-medium mt-2"
+                        >
+                          {expandedCategories ? (
+                            <>
+                              <ChevronUpIcon className="w-4 h-4" />
+                              Show Less
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDownIcon className="w-4 h-4" />
+                              Show {hiddenCategories.length} More Categories
+                            </>
+                          )}
+                        </button>
+
+                        {expandedCategories && hiddenCategories.map(category => {
+                          const technologies = analysis.categorizedTech[category];
+                          if (!technologies || technologies.length === 0) return null;
+                          
+                          return (
+                            <div key={category} className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-6 h-6 rounded-md bg-gradient-to-r ${categoryColors[category]} flex items-center justify-center text-white`}>
+                                  {getCategoryIcon(category)}
+                                </div>
+                                <h3 className="text-sm font-semibold text-white">
+                                  {categoryNames[category]}
+                                </h3>
+                                <span className="text-xs text-[#94A3B8]">
+                                  ({technologies.length})
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2 pl-8">
+                                {technologies.map((tech, index) => (
+                                  <span
+                                    key={index}
+                                    className="px-2.5 py-1 bg-[#1A1F2E] text-[#94A3B8] rounded-lg text-xs font-medium border border-[#334155] hover:border-[#60A5FA] hover:text-white transition-all duration-200"
+                                  >
+                                    {tech}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // Fallback to old display if categorization isn't available
+                  <div className="flex flex-wrap gap-2">
+                    {analysis.techStack?.map((tech, index) => (
+                      <span 
+                        key={index}
+                        className="px-3 py-1.5 bg-gradient-to-r from-[#60A5FA] to-[#818CF8] text-white rounded-lg text-xs font-medium shadow-lg"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* System Architecture */}

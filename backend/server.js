@@ -142,6 +142,117 @@ function generateArchitecture(patterns, techStack) {
   return architecture;
 }
 
+// NEW FUNCTION: Categorize tech stack
+function categorizeTechStack(techStack, packageJson) {
+  const categories = {
+    frontend: [],
+    backend: [],
+    database: [],
+    ai_ml: [],
+    devTools: [],
+    cloud: [],
+    testing: [],
+    mobile: [],
+    languages: [],
+    other: []
+  };
+
+  const languages = [
+    "javascript",
+    "typescript",
+    "html",
+    "css",
+    "python",
+    "java",
+    "c",
+    "cpp",
+    "c#",
+    "go",
+    "rust",
+    "php"
+  ];
+
+  const frontendKeywords = [
+    "react", "vue", "angular", "next", "nuxt", "svelte",
+    "tailwind", "bootstrap", "chakra", "material",
+    "redux", "zustand", "mobx", "react-router"
+  ];
+
+  const backendKeywords = [
+    "express", "nestjs", "fastify", "koa",
+    "django", "flask", "spring", "rails",
+    "graphql", "apollo"
+  ];
+
+  const databaseKeywords = [
+    "mongo", "mongoose", "postgres", "mysql",
+    "sqlite", "redis", "prisma", "typeorm",
+    "sequelize", "firebase", "supabase"
+  ];
+
+  const testingKeywords = [
+    "jest", "vitest", "cypress", "playwright",
+    "testing-library", "mocha", "chai"
+  ];
+
+  const devToolKeywords = [
+    "eslint", "prettier", "babel", "webpack",
+    "vite", "swc", "husky", "commitlint",
+    "typescript"
+  ];
+
+  techStack.forEach(tech => {
+    const t = tech.toLowerCase();
+
+    // 1️⃣ Languages first
+    if (languages.includes(t)) {
+      categories.languages.push(tech);
+      return;
+    }
+
+    // 2️⃣ Dev Dependencies priority
+    if (packageJson?.devDependencies?.[tech]) {
+      categories.devTools.push(tech);
+      return;
+    }
+
+    // 3️⃣ Testing
+    if (testingKeywords.some(k => t.includes(k))) {
+      categories.testing.push(tech);
+      return;
+    }
+
+    // 4️⃣ Database
+    if (databaseKeywords.some(k => t.includes(k))) {
+      categories.database.push(tech);
+      return;
+    }
+
+    // 5️⃣ Backend
+    if (backendKeywords.some(k => t.includes(k))) {
+      categories.backend.push(tech);
+      return;
+    }
+
+    // 6️⃣ Frontend
+    if (frontendKeywords.some(k => t.includes(k))) {
+      categories.frontend.push(tech);
+      return;
+    }
+
+    // 7️⃣ Default
+    categories.other.push(tech);
+  });
+
+  // Sort everything
+  Object.keys(categories).forEach(key => {
+    categories[key].sort((a, b) => a.localeCompare(b));
+  });
+
+  return categories;
+}
+
+
 app.post("/analyzepage", async (req, res) => {
   try {
     const repoUrl = req.body?.repoUrl;
@@ -191,7 +302,7 @@ app.post("/analyzepage", async (req, res) => {
       );
       packageJson = JSON.parse(Buffer.from(packageResponse.data.content, 'base64').toString('utf-8'));
     } catch (error) {
-      console.log('No package.json found');
+      // console.log('No package.json found');
     }
 
     // Fetch full repository structure recursively
@@ -204,21 +315,16 @@ app.post("/analyzepage", async (req, res) => {
     let techStack = Object.keys(languagesResponse.data);
     if (packageJson) {
       const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
-      const frameworks = Object.keys(deps).filter(dep => 
-        dep.includes('react') || 
-        dep.includes('vue') || 
-        dep.includes('angular') || 
-        dep.includes('express') || 
-        dep.includes('next') || 
-        dep.includes('prisma') || 
-        dep.includes('typeorm') ||
-        dep.includes('jwt')
-      );
-      techStack = [...new Set([...techStack, ...frameworks])];
+      // Get ALL dependencies, not just filtered ones
+      const allDeps = Object.keys(deps);
+      techStack = [...new Set([...techStack, ...allDeps])];
     }
 
     // Generate architecture
     const architecture = generateArchitecture(patterns, techStack);
+
+    // NEW: Categorize the tech stack
+    const categorizedTech = categorizeTechStack(techStack, packageJson);
 
     res.json({
       name: repoResponse.data.name,
@@ -228,6 +334,7 @@ app.post("/analyzepage", async (req, res) => {
       forks: repoResponse.data.forks_count,
       openIssues: repoResponse.data.open_issues_count,
       techStack: techStack,
+      categorizedTech: categorizedTech, // ADD THIS
       structure: structure,
       architecture: architecture,
       patterns: patterns,
