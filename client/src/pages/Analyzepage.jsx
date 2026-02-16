@@ -5,42 +5,50 @@ import RepoLensLogo from "../assets/Repolenslogo.svg";
 export default function AnalyzePage() {
   const navigate = useNavigate();
   const [repoUrl, setRepoUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
- // In your AnalyzePage.jsx, update the handleAnalyze function:
-const handleAnalyze = async (e) => {
-  e.preventDefault();
-  
-  console.log("Analyzing:", repoUrl);
-  setLoading(true);
+  // In your AnalyzePage.jsx, update the handleAnalyze function:
+  const handleAnalyze = async (e) => {
+    e.preventDefault();
 
-  try {
-    const response = await fetch("http://localhost:5000/analyzepage", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ repoUrl }),
-    });
+    if (!repoUrl.trim()) return;
 
-    const data = await response.json();
-    console.log("Backend response:", data);
-    
-    // Navigate to homepage with the analysis data
-    navigate("/homepage", { 
-      state: { 
-        analysis: data,
-        repoUrl: repoUrl 
-      } 
-    });
+    console.log("Analyzing:", repoUrl);
+    setLoading(true);
+    setError(null);
 
-  } catch (error) {
-    console.error("Error analyzing repo:", error);
-    // You might want to show an error message to the user here
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      const response = await fetch("http://localhost:5000/analyzepage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ repoUrl }),
+      });
 
+      const data = await response.json();
+      console.log("Backend response:", data);
+
+      // ❗ STOP if backend failed
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to analyze repository");
+      }
+
+      // ✅ Only navigate if success
+      navigate("/homepage", {
+        state: {
+          analysis: data,
+          repoUrl: repoUrl,
+        },
+      });
+    } catch (err) {
+      console.error("Error analyzing repo:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0B0E17] font-['Plus_Jakarta_Sans',_'Inter',_sans-serif] text-white relative overflow-hidden">
@@ -122,11 +130,13 @@ const handleAnalyze = async (e) => {
               </div>
               <button
                 type="submit"
-                className="bg-[#3B82F6] hover:bg-[#60A5FA] text-white px-8 py-4 rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 whitespace-nowrap"
+                disabled={loading}
+                className="bg-[#3B82F6] hover:bg-[#60A5FA] disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-4 rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 whitespace-nowrap"
               >
-                ANALYZE
+                {loading ? "Analyzing..." : "ANALYZE"}
               </button>
             </form>
+            {error && <p className="text-red-400 mt-4 text-sm">{error}</p>}
           </div>
 
           {/* Trending Repos */}

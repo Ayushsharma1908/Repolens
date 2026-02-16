@@ -8,9 +8,10 @@ import {
   CodeBracketIcon,
   StarIcon,
   CubeIcon,
-  ArrowPathIcon,
   ChevronDownIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  PhotoIcon,
+  CpuChipIcon
 } from '@heroicons/react/24/outline';
 
 export default function HomePage() {
@@ -19,7 +20,6 @@ export default function HomePage() {
   const analysis = location.state?.analysis;
   const [expandedFolders, setExpandedFolders] = useState({});
   const [structure, setStructure] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (analysis?.structure) {
@@ -34,32 +34,66 @@ export default function HomePage() {
     }));
   };
 
+  // Get appropriate icon based on file extension
+  const getFileIcon = (filename) => {
+    const extension = filename.split('.').pop().toLowerCase();
+    
+    // Image files
+    if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico'].includes(extension)) {
+      return <PhotoIcon className="w-4 h-4 text-pink-400" />;
+    }
+    // JavaScript/TypeScript files
+    else if (['js', 'jsx', 'ts', 'tsx'].includes(extension)) {
+      return <CodeBracketIcon className="w-4 h-4 text-yellow-400" />;
+    }
+    // JSON files
+    else if (extension === 'json') {
+      return <CubeIcon className="w-4 h-4 text-orange-400" />;
+    }
+    // CSS/SCSS files
+    else if (['css', 'scss', 'sass', 'less'].includes(extension)) {
+      return <CodeBracketIcon className="w-4 h-4 text-blue-400" />;
+    }
+    // HTML files
+    else if (['html', 'htm'].includes(extension)) {
+      return <CodeBracketIcon className="w-4 h-4 text-red-400" />;
+    }
+    // Markdown files
+    else if (['md', 'markdown'].includes(extension)) {
+      return <DocumentIcon className="w-4 h-4 text-purple-400" />;
+    }
+    // Default
+    else {
+      return <DocumentIcon className="w-4 h-4 text-[#64748B]" />;
+    }
+  };
+
   const renderStructure = (items, level = 0, path = '') => {
     return items.map((item, index) => {
       const currentPath = `${path}/${item.name}`;
       const isExpanded = expandedFolders[currentPath];
-      const indent = level * 20;
+      const indent = level * 16;
 
       if (item.type === 'dir') {
         return (
           <div key={currentPath} className="select-none">
             <div 
-              className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded px-2 cursor-pointer transition-colors"
+              className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 cursor-pointer transition-all duration-200 group"
               style={{ marginLeft: `${indent}px` }}
               onClick={() => toggleFolder(currentPath)}
             >
-              <span className="text-[#94A3B8]">
+              <span className="text-[#94A3B8] group-hover:text-[#60A5FA] transition-colors">
                 {isExpanded ? (
                   <ChevronDownIcon className="w-4 h-4" />
                 ) : (
                   <ChevronRightIcon className="w-4 h-4" />
                 )}
               </span>
-              <FolderIcon className="w-5 h-5 text-[#60A5FA]" />
-              <span className="text-white text-sm">{item.name}</span>
+              <FolderIcon className={`w-5 h-5 transition-colors ${isExpanded ? 'text-[#60A5FA]' : 'text-[#94A3B8] group-hover:text-[#60A5FA]'}`} />
+              <span className="text-gray-300 text-sm font-medium group-hover:text-white transition-colors">{item.name}</span>
             </div>
             {isExpanded && item.children && (
-              <div>
+              <div className="border-l border-[#334155] ml-6 pl-2">
                 {renderStructure(item.children, level + 1, currentPath)}
               </div>
             )}
@@ -69,15 +103,52 @@ export default function HomePage() {
         return (
           <div 
             key={currentPath}
-            className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded px-2 transition-colors"
+            className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 transition-all duration-200 group"
             style={{ marginLeft: `${indent + 24}px` }}
           >
-            <DocumentIcon className="w-4 h-4 text-[#64748B]" />
-            <span className="text-[#94A3B8] text-sm">{item.name}</span>
+            {getFileIcon(item.name)}
+            <span className="text-gray-400 text-sm group-hover:text-white transition-colors">{item.name}</span>
           </div>
         );
       }
     });
+  };
+
+  // Helper function to count files recursively
+  const countFiles = (items) => {
+    let count = 0;
+    items.forEach(item => {
+      if (item.type === 'file') count++;
+      if (item.children) count += countFiles(item.children);
+    });
+    return count;
+  };
+
+  // Helper function to count directories recursively
+  const countDirs = (items) => {
+    let count = 0;
+    items.forEach(item => {
+      if (item.type === 'dir') {
+        count++;
+        if (item.children) count += countDirs(item.children);
+      }
+    });
+    return count;
+  };
+
+  // Get tech color based on technology name
+  const getTechColor = (tech) => {
+    const t = tech.toLowerCase();
+    if (t.includes('react') || t.includes('vue') || t.includes('angular')) return 'from-blue-500 to-cyan-500';
+    if (t.includes('node') || t.includes('express')) return 'from-green-500 to-emerald-500';
+    if (t.includes('python') || t.includes('django')) return 'from-yellow-500 to-orange-500';
+    if (t.includes('java') || t.includes('spring')) return 'from-red-500 to-pink-500';
+    if (t.includes('typescript') || t.includes('javascript')) return 'from-yellow-400 to-amber-500';
+    if (t.includes('postgres') || t.includes('mysql') || t.includes('mongodb')) return 'from-purple-500 to-indigo-500';
+    if (t.includes('prisma')) return 'from-teal-500 to-emerald-500';
+    if (t.includes('docker')) return 'from-blue-600 to-indigo-600';
+    if (t.includes('aws') || t.includes('cloud')) return 'from-orange-500 to-red-500';
+    return 'from-[#60A5FA] to-[#818CF8]';
   };
 
   if (!analysis) {
@@ -137,50 +208,46 @@ export default function HomePage() {
       {/* Main Content */}
       <main className="relative px-6 py-8 md:px-12 md:py-12 z-10">
         <div className="max-w-7xl mx-auto">
-          {/* Repo Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl md:text-4xl font-bold text-white">
-                {analysis.name}
-              </h1>
-              <div className="flex items-center gap-1 bg-[#1A1F2E] px-3 py-1 rounded-full">
-                <StarIcon className="w-4 h-4 text-[#FBBF24]" />
-                <span className="text-sm text-[#94A3B8]">{analysis.stars?.toLocaleString()}</span>
+          {/* Repo Header with Quick Stats */}
+          <div className="mb-8 bg-gradient-to-r from-[#0F1320] to-[#1A1F2E] rounded-2xl border border-[#334155] p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl md:text-4xl font-bold text-white">
+                    {analysis.name}
+                  </h1>
+                  <div className="flex items-center gap-1 bg-[#1A1F2E] px-3 py-1 rounded-full border border-[#334155]">
+                    <StarIcon className="w-4 h-4 text-[#FBBF24]" />
+                    <span className="text-sm text-[#94A3B8]">{analysis.stars?.toLocaleString()}</span>
+                  </div>
+                </div>
+                {analysis.description && (
+                  <p className="text-[#94A3B8] text-base md:text-lg">{analysis.description}</p>
+                )}
               </div>
-            </div>
-            {analysis.description && (
-              <p className="text-[#94A3B8] text-lg">{analysis.description}</p>
-            )}
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-xl border border-[#334155] p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <CubeIcon className="w-5 h-5 text-[#60A5FA]" />
-                <h3 className="text-sm font-medium text-[#94A3B8]">Total Files</h3>
+              
+              {/* Compact Stats */}
+              <div className="flex flex-wrap gap-3">
+                <div className="flex items-center gap-2 bg-[#1A1F2E] px-4 py-2 rounded-xl border border-[#334155]">
+                  <CubeIcon className="w-4 h-4 text-[#60A5FA]" />
+                  <span className="text-sm text-[#94A3B8]">Files:</span>
+                  <span className="text-white font-semibold">
+                    {analysis.structure ? countFiles(analysis.structure) : 0}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 bg-[#1A1F2E] px-4 py-2 rounded-xl border border-[#334155]">
+                  <FolderIcon className="w-4 h-4 text-[#60A5FA]" />
+                  <span className="text-sm text-[#94A3B8]">Dirs:</span>
+                  <span className="text-white font-semibold">
+                    {analysis.structure ? countDirs(analysis.structure) : 0}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 bg-[#1A1F2E] px-4 py-2 rounded-xl border border-[#334155]">
+                  <CodeBracketIcon className="w-4 h-4 text-[#60A5FA]" />
+                  <span className="text-sm text-[#94A3B8]">Languages:</span>
+                  <span className="text-white font-semibold">{analysis.techStack?.length || 0}</span>
+                </div>
               </div>
-              <p className="text-3xl font-bold text-white">
-                {analysis.structure?.filter(f => f.type === 'file').length || 0}
-              </p>
-            </div>
-            <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-xl border border-[#334155] p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <FolderIcon className="w-5 h-5 text-[#60A5FA]" />
-                <h3 className="text-sm font-medium text-[#94A3B8]">Directories</h3>
-              </div>
-              <p className="text-3xl font-bold text-white">
-                {analysis.structure?.filter(f => f.type === 'dir').length || 0}
-              </p>
-            </div>
-            <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-xl border border-[#334155] p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <CodeBracketIcon className="w-5 h-5 text-[#60A5FA]" />
-                <h3 className="text-sm font-medium text-[#94A3B8]">Languages</h3>
-              </div>
-              <p className="text-3xl font-bold text-white">
-                {analysis.techStack?.length || 0}
-              </p>
             </div>
           </div>
 
@@ -188,11 +255,16 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Project Structure */}
             <div className="lg:col-span-1">
-              <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-xl border border-[#334155] p-6 sticky top-24">
-                <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                  <FolderIcon className="w-5 h-5 text-[#60A5FA]" />
-                  Project Structure
-                </h2>
+              <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6 sticky top-24">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <FolderIcon className="w-5 h-5 text-[#60A5FA]" />
+                    Project Structure
+                  </h2>
+                  <span className="text-xs text-[#60A5FA] bg-[#60A5FA]/10 px-2 py-1 rounded-full">
+                    {analysis.structure?.length || 0} items
+                  </span>
+                </div>
                 <div className="max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
                   {renderStructure(structure)}
                 </div>
@@ -200,18 +272,20 @@ export default function HomePage() {
             </div>
 
             {/* Tech Stack & Architecture */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-6">
               {/* Tech Stack */}
-              <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-xl border border-[#334155] p-6">
-                <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                  <CodeBracketIcon className="w-5 h-5 text-[#60A5FA]" />
-                  Tech Stack
-                </h2>
-                <div className="flex flex-wrap gap-3">
+              <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <CodeBracketIcon className="w-5 h-5 text-[#60A5FA]" />
+                    Tech Stack
+                  </h2>
+                </div>
+                <div className="flex flex-wrap gap-2">
                   {analysis.techStack?.map((tech, index) => (
                     <span 
                       key={index}
-                      className="px-4 py-2 bg-[#1A1F2E] text-[#60A5FA] rounded-lg text-sm font-medium border border-[#334155]"
+                      className={`px-3 py-1.5 bg-gradient-to-r ${getTechColor(tech)} text-white rounded-lg text-xs font-medium shadow-lg`}
                     >
                       {tech}
                     </span>
@@ -220,70 +294,138 @@ export default function HomePage() {
               </div>
 
               {/* System Architecture */}
-              <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-xl border border-[#334155] p-6">
-                <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
+                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <CubeIcon className="w-5 h-5 text-[#60A5FA]" />
                   System Architecture
                 </h2>
-                <div className="space-y-6">
-                  {/* Entry Point */}
-                  <div className="border-l-2 border-[#60A5FA] pl-4">
-                    <h3 className="text-sm font-medium text-[#94A3B8] mb-2">1. Entry Point</h3>
-                    <p className="text-white">
-                      {analysis.techStack?.includes('TypeScript') ? 'main.tsx' : 'index.js'} → App → Router
-                    </p>
-                  </div>
-
-                  {/* Auth Flow (if detected) */}
-                  {analysis.structure?.some(f => f.name.includes('auth')) && (
-                    <div className="border-l-2 border-[#60A5FA] pl-4">
-                      <h3 className="text-sm font-medium text-[#94A3B8] mb-2">2. Auth Flow</h3>
-                      <p className="text-white">auth.js → JWT → Context API</p>
+                
+                {/* Architecture Flow Diagram */}
+                <div className="relative mb-8">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
+                      <p className="text-xs text-[#94A3B8] mb-1">Entry</p>
+                      <p className="text-sm text-white font-medium">
+                        {analysis.techStack?.includes('TypeScript') ? 'main.tsx' : 'index.js'}
+                      </p>
                     </div>
-                  )}
-
-                  {/* Data Flow */}
-                  <div className="border-l-2 border-[#60A5FA] pl-4">
-                    <h3 className="text-sm font-medium text-[#94A3B8] mb-2">
-                      {analysis.techStack?.includes('TypeScript') ? '3. Data Flow' : '2. Data Flow'}
-                    </h3>
-                    <p className="text-white">
-                      Components → API Layer → Database
-                    </p>
-                  </div>
-
-                  {/* Detected Patterns */}
-                  <div className="mt-4 pt-4 border-t border-[#334155]">
-                    <h3 className="text-sm font-medium text-[#94A3B8] mb-3">Detected Patterns</h3>
-                    <div className="space-y-2">
-                      {analysis.structure?.some(f => f.name.includes('component')) && (
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                          <span className="text-sm text-white">Component-based architecture</span>
-                        </div>
-                      )}
-                      {analysis.structure?.some(f => f.name.includes('service')) && (
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                          <span className="text-sm text-white">Service layer pattern</span>
-                        </div>
-                      )}
-                      {analysis.techStack?.includes('Prisma') && (
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                          <span className="text-sm text-white">Prisma ORM for database</span>
-                        </div>
-                      )}
+                    <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
+                    <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
+                      <p className="text-xs text-[#94A3B8] mb-1">App</p>
+                      <p className="text-sm text-white font-medium">
+                        {analysis.techStack?.includes('TypeScript') ? 'App.tsx' : 'App.js'}
+                      </p>
+                    </div>
+                    <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
+                    <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
+                      <p className="text-xs text-[#94A3B8] mb-1">Router</p>
+                      <p className="text-sm text-white font-medium">Routes/Pages</p>
                     </div>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Left Column - Architecture Details */}
+                  <div className="space-y-4">
+                    {/* Entry Point */}
+                    <div className="border-l-2 border-[#60A5FA] pl-3">
+                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-1">Entry Point</h3>
+                      <p className="text-sm text-white">
+                        {analysis.techStack?.includes('TypeScript') ? 'main.tsx → App.tsx' : 'index.js → App.js'}
+                      </p>
+                    </div>
+
+                    {/* Auth Flow (if detected) */}
+                    {analysis.architecture?.authFlow && (
+                      <div className="border-l-2 border-green-500 pl-3">
+                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-1">Auth Flow</h3>
+                        <p className="text-sm text-white">{analysis.architecture.authFlow}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column - Data Flow */}
+                  <div className="space-y-4">
+                    {/* Data Flow */}
+                    <div className="border-l-2 border-purple-500 pl-3">
+                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-1">Data Flow</h3>
+                      {analysis.architecture?.dataFlow?.length > 0 ? (
+                        analysis.architecture.dataFlow.map((flow, i) => (
+                          <p key={i} className="text-sm text-white">{flow}</p>
+                        ))
+                      ) : (
+                        <p className="text-sm text-white">Components → API → Database</p>
+                      )}
+                    </div>
+
+                    {/* Dependencies */}
+                    {analysis.packageJson && (
+                      <div className="border-l-2 border-yellow-500 pl-3">
+                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-1">Dependencies</h3>
+                        <p className="text-sm text-white">
+                          {analysis.packageJson.dependencies} direct • {analysis.packageJson.devDependencies} dev
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Detected Patterns */}
+                {analysis.architecture?.patterns && analysis.architecture.patterns.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-[#334155]">
+                    <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-3">Detected Patterns</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {analysis.architecture.patterns.map((pattern, i) => (
+                        <span key={i} className="flex items-center gap-1 px-2 py-1 bg-[#1A1F2E] rounded-lg border border-[#334155]">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                          <span className="text-xs text-white">{pattern}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* File Type Distribution */}
+              {analysis.structure && (
+                <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
+                  <h3 className="text-sm font-medium text-white mb-3">File Distribution</h3>
+                  <div className="flex flex-wrap gap-3">
+                    {Array.from(new Set(structure
+                      .filter(f => f.type === 'file')
+                      .map(f => f.extension)
+                      .filter(Boolean)
+                    )).slice(0, 5).map((ext, i) => {
+                      const count = (() => {
+                        let total = 0;
+                        const countExt = (items) => {
+                          items.forEach(item => {
+                            if (item.type === 'file' && item.extension === ext) total++;
+                            if (item.children) countExt(item.children);
+                          });
+                        };
+                        countExt(structure);
+                        return total;
+                      })();
+                      
+                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500'];
+                      return (
+                        <div key={i} className="flex items-center gap-2">
+                          <div className={`w-2 h-2 ${colors[i % colors.length]} rounded-full`}></div>
+                          <span className="text-xs text-[#94A3B8]">.{ext}</span>
+                          <span className="text-xs text-white">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </main>
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }
