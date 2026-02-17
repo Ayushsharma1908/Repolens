@@ -13,37 +13,62 @@ app.get("/", (req, res) => {
 });
 
 // Recursively fetch repository structure
-async function fetchRepoStructureRecursive(owner, repo, path = "", headers) {
+async function fetchRepoStructure(owner, repo, headers) {
   try {
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents${path ? `/${path}` : ''}`;
-    const response = await axios.get(url, { headers });
-    
-    const items = await Promise.all(response.data.map(async (item) => {
-      if (item.type === 'dir') {
-        const children = await fetchRepoStructureRecursive(owner, repo, item.path, headers);
-        return {
-          name: item.name,
-          type: 'dir',
-          path: item.path,
-          children: children
-        };
-      } else {
-        return {
-          name: item.name,
-          type: 'file',
-          path: item.path,
-          size: item.size,
-          extension: item.name.split('.').pop()
-        };
-      }
-    }));
-    
-    return items;
+    // 1️⃣ Get default branch
+    const repoInfo = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}`,
+      { headers }
+    );
+
+    const branch = repoInfo.data.default_branch;
+
+    // 2️⃣ Get full tree recursively
+    const treeResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+      { headers }
+    );
+
+    const files = treeResponse.data.tree;
+
+    // 3️⃣ Build nested structure from flat paths
+    const root = [];
+
+    files.forEach((file) => {
+      if (file.type !== "blob") return;
+
+      const parts = file.path.split("/");
+      let currentLevel = root;
+
+      parts.forEach((part, index) => {
+        const isFile = index === parts.length - 1;
+
+        let existing = currentLevel.find((item) => item.name === part);
+
+        if (!existing) {
+          existing = {
+            name: part,
+            type: isFile ? "file" : "dir",
+            path: parts.slice(0, index + 1).join("/"),
+            children: isFile ? undefined : [],
+            extension: isFile ? part.split(".").pop() : undefined,
+          };
+          currentLevel.push(existing);
+        }
+
+        if (!isFile) {
+          currentLevel = existing.children;
+        }
+      });
+    });
+
+    return root;
   } catch (error) {
-    console.error(`Error fetching ${path}:`, error.message);
+    console.error("Error fetching tree:", error.message);
     return [];
   }
 }
+
 
 // Detect architecture patterns from file structure
 function detectArchitecture(structure) {
@@ -60,29 +85,46 @@ function detectArchitecture(structure) {
     hasControllers: false,
     hasRoutes: false,
     hasMiddleware: false,
-    hasConfig: false
+    hasConfig: false,
   };
 
   const searchPatterns = (items) => {
-    items.forEach(item => {
+    items.forEach((item) => {
       const name = item.name.toLowerCase();
-      const path = item.path?.toLowerCase() || '';
-      
+      const path = item.path?.toLowerCase() || "";
+
       // Detect patterns based on folder/file names
-      if (name.includes('component') || path.includes('/components/')) patterns.hasComponents = true;
-      if (name.includes('service') || path.includes('/services/')) patterns.hasServices = true;
-      if (name.includes('util') || path.includes('/utils/')) patterns.hasUtils = true;
-      if (name.includes('hook') || path.includes('/hooks/')) patterns.hasHooks = true;
-      if (name.includes('context') || path.includes('/context/')) patterns.hasContext = true;
-      if (name.includes('redux') || name.includes('store')) patterns.hasRedux = true;
-      if (name.includes('api') || path.includes('/api/')) patterns.hasApi = true;
-      if (name.includes('db') || name.includes('database') || path.includes('/db/')) patterns.hasDb = true;
-      if (name.includes('model') || path.includes('/models/')) patterns.hasModels = true;
-      if (name.includes('controller') || path.includes('/controllers/')) patterns.hasControllers = true;
-      if (name.includes('route') || path.includes('/routes/')) patterns.hasRoutes = true;
-      if (name.includes('middleware') || path.includes('/middleware/')) patterns.hasMiddleware = true;
-      if (name.includes('config') || path.includes('/config/')) patterns.hasConfig = true;
-      
+      if (name.includes("component") || path.includes("/components/"))
+        patterns.hasComponents = true;
+      if (name.includes("service") || path.includes("/services/"))
+        patterns.hasServices = true;
+      if (name.includes("util") || path.includes("/utils/"))
+        patterns.hasUtils = true;
+      if (name.includes("hook") || path.includes("/hooks/"))
+        patterns.hasHooks = true;
+      if (name.includes("context") || path.includes("/context/"))
+        patterns.hasContext = true;
+      if (name.includes("redux") || name.includes("store"))
+        patterns.hasRedux = true;
+      if (name.includes("api") || path.includes("/api/"))
+        patterns.hasApi = true;
+      if (
+        name.includes("db") ||
+        name.includes("database") ||
+        path.includes("/db/")
+      )
+        patterns.hasDb = true;
+      if (name.includes("model") || path.includes("/models/"))
+        patterns.hasModels = true;
+      if (name.includes("controller") || path.includes("/controllers/"))
+        patterns.hasControllers = true;
+      if (name.includes("route") || path.includes("/routes/"))
+        patterns.hasRoutes = true;
+      if (name.includes("middleware") || path.includes("/middleware/"))
+        patterns.hasMiddleware = true;
+      if (name.includes("config") || path.includes("/config/"))
+        patterns.hasConfig = true;
+
       // Recursively search children
       if (item.children) {
         searchPatterns(item.children);
@@ -97,46 +139,56 @@ function detectArchitecture(structure) {
 // Generate architecture description based on patterns
 function generateArchitecture(patterns, techStack) {
   const architecture = {
-    entryPoint: techStack.includes('TypeScript') ? 'main.tsx → App.tsx → Router' : 'index.js → App.js → Router',
+    entryPoint: techStack.includes("TypeScript")
+      ? "main.tsx → App.tsx → Router"
+      : "index.js → App.js → Router",
     dataFlow: [],
     patterns: [],
-    layers: []
+    layers: [],
   };
 
   // Determine architecture type
   if (patterns.hasComponents && patterns.hasServices) {
-    architecture.layers.push('Component Layer', 'Service Layer');
-    architecture.dataFlow.push('Components → Services → API');
+    architecture.layers.push("Component Layer", "Service Layer");
+    architecture.dataFlow.push("Components → Services → API");
   }
-  
+
   if (patterns.hasControllers && patterns.hasModels) {
-    architecture.layers.push('Controller Layer', 'Model Layer');
-    architecture.dataFlow.push('Routes → Controllers → Models');
+    architecture.layers.push("Controller Layer", "Model Layer");
+    architecture.dataFlow.push("Routes → Controllers → Models");
   }
 
   if (patterns.hasApi && patterns.hasDb) {
-    architecture.dataFlow.push('API Layer → Database Layer');
+    architecture.dataFlow.push("API Layer → Database Layer");
   }
 
   if (patterns.hasRedux || patterns.hasContext) {
-    architecture.patterns.push(patterns.hasRedux ? 'Redux State Management' : 'Context API State Management');
+    architecture.patterns.push(
+      patterns.hasRedux
+        ? "Redux State Management"
+        : "Context API State Management",
+    );
   }
 
   if (patterns.hasHooks) {
-    architecture.patterns.push('React Hooks');
+    architecture.patterns.push("React Hooks");
   }
 
   if (patterns.hasMiddleware) {
-    architecture.patterns.push('Middleware Pattern');
+    architecture.patterns.push("Middleware Pattern");
   }
 
-  if (techStack.includes('Prisma')) {
-    architecture.patterns.push('Prisma ORM');
+  if (techStack.includes("Prisma")) {
+    architecture.patterns.push("Prisma ORM");
   }
 
   // Generate auth flow if detected
-  if (patterns.hasMiddleware || techStack.includes('JWT') || techStack.includes('auth')) {
-    architecture.authFlow = 'JWT Authentication with Context API';
+  if (
+    patterns.hasMiddleware ||
+    techStack.includes("JWT") ||
+    techStack.includes("auth")
+  ) {
+    architecture.authFlow = "JWT Authentication with Context API";
   }
 
   return architecture;
@@ -154,7 +206,7 @@ function categorizeTechStack(techStack, packageJson) {
     testing: [],
     mobile: [],
     languages: [],
-    other: []
+    other: [],
   };
 
   const languages = [
@@ -169,40 +221,78 @@ function categorizeTechStack(techStack, packageJson) {
     "c#",
     "go",
     "rust",
-    "php"
+    "php",
   ];
 
   const frontendKeywords = [
-    "react", "vue", "angular", "next", "nuxt", "svelte",
-    "tailwind", "bootstrap", "chakra", "material",
-    "redux", "zustand", "mobx", "react-router"
+    "react",
+    "vue",
+    "angular",
+    "next",
+    "nuxt",
+    "svelte",
+    "tailwind",
+    "bootstrap",
+    "chakra",
+    "material",
+    "redux",
+    "zustand",
+    "mobx",
+    "react-router",
   ];
 
   const backendKeywords = [
-    "express", "nestjs", "fastify", "koa",
-    "django", "flask", "spring", "rails",
-    "graphql", "apollo"
+    "express",
+    "nestjs",
+    "fastify",
+    "koa",
+    "django",
+    "flask",
+    "spring",
+    "rails",
+    "graphql",
+    "apollo",
   ];
 
   const databaseKeywords = [
-    "mongo", "mongoose", "postgres", "mysql",
-    "sqlite", "redis", "prisma", "typeorm",
-    "sequelize", "firebase", "supabase"
+    "mongo",
+    "mongoose",
+    "postgres",
+    "mysql",
+    "sqlite",
+    "redis",
+    "prisma",
+    "typeorm",
+    "sequelize",
+    "firebase",
+    "supabase",
   ];
 
   const testingKeywords = [
-    "jest", "vitest", "cypress", "playwright",
-    "testing-library", "mocha", "chai"
+    "jest",
+    "vitest",
+    "cypress",
+    "playwright",
+    "testing-library",
+    "mocha",
+    "chai",
   ];
 
   const devToolKeywords = [
-    "eslint", "prettier", "babel", "webpack",
-    "vite", "swc", "husky", "commitlint",
-    "typescript"
+    "eslint",
+    "prettier",
+    "babel",
+    "webpack",
+    "vite",
+    "swc",
+    "husky",
+    "commitlint",
+    "typescript",
   ];
+techStack.forEach((rawTech) => {
+  const tech = normalizeTechName(rawTech);
+  const t = tech.toLowerCase();
 
-  techStack.forEach(tech => {
-    const t = tech.toLowerCase();
 
     // 1️⃣ Languages first
     if (languages.includes(t)) {
@@ -217,25 +307,25 @@ function categorizeTechStack(techStack, packageJson) {
     }
 
     // 3️⃣ Testing
-    if (testingKeywords.some(k => t.includes(k))) {
+    if (testingKeywords.some((k) => t.includes(k))) {
       categories.testing.push(tech);
       return;
     }
 
     // 4️⃣ Database
-    if (databaseKeywords.some(k => t.includes(k))) {
+    if (databaseKeywords.some((k) => t.includes(k))) {
       categories.database.push(tech);
       return;
     }
 
     // 5️⃣ Backend
-    if (backendKeywords.some(k => t.includes(k))) {
+    if (backendKeywords.some((k) => t.includes(k))) {
       categories.backend.push(tech);
       return;
     }
 
     // 6️⃣ Frontend
-    if (frontendKeywords.some(k => t.includes(k))) {
+    if (frontendKeywords.some((k) => t.includes(k))) {
       categories.frontend.push(tech);
       return;
     }
@@ -244,14 +334,34 @@ function categorizeTechStack(techStack, packageJson) {
     categories.other.push(tech);
   });
 
-  // Sort everything
-  Object.keys(categories).forEach(key => {
-    categories[key].sort((a, b) => a.localeCompare(b));
+  Object.keys(categories).forEach((key) => {
+  const map = new Map();
+
+  categories[key].forEach((item) => {
+    const normalized = normalizeTechName(item);
+    map.set(normalized.toLowerCase(), normalized);
   });
+
+  categories[key] = Array.from(map.values()).sort((a, b) =>
+    a.localeCompare(b)
+  );
+});
+
 
   return categories;
 }
 
+function normalizeTechName(name) {
+      const map = {
+        typescript: "TypeScript",
+        javascript: "JavaScript",
+        html: "HTML",
+        css: "CSS",
+        json: "JSON",
+      };
+
+      return map[name.toLowerCase()] || name;
+    }
 
 app.post("/analyzepage", async (req, res) => {
   try {
@@ -262,7 +372,9 @@ app.post("/analyzepage", async (req, res) => {
     }
 
     // Extract owner and repo
-    const cleanedUrl = repoUrl.replace("https://github.com/", "").replace(".git", "");
+    const cleanedUrl = repoUrl
+      .replace("https://github.com/", "")
+      .replace(".git", "");
     const [owner, repo] = cleanedUrl.split("/");
 
     const headers = process.env.GITHUB_TOKEN
@@ -272,25 +384,28 @@ app.post("/analyzepage", async (req, res) => {
     // Fetch repo basic info
     const repoResponse = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}`,
-      { headers }
+      { headers },
     );
 
     // Fetch languages
     const languagesResponse = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}/languages`,
-      { headers }
+      { headers },
     );
 
     // Fetch README to detect more tech stack info
-    let readmeContent = '';
+    let readmeContent = "";
     try {
       const readmeResponse = await axios.get(
         `https://api.github.com/repos/${owner}/${repo}/readme`,
-        { headers }
+        { headers },
       );
-      readmeContent = Buffer.from(readmeResponse.data.content, 'base64').toString('utf-8');
+      readmeContent = Buffer.from(
+        readmeResponse.data.content,
+        "base64",
+      ).toString("utf-8");
     } catch (error) {
-      console.log('No README found');
+      console.log("No README found");
     }
 
     // Fetch package.json if exists (for npm projects)
@@ -298,27 +413,47 @@ app.post("/analyzepage", async (req, res) => {
     try {
       const packageResponse = await axios.get(
         `https://api.github.com/repos/${owner}/${repo}/contents/package.json`,
-        { headers }
+        { headers },
       );
-      packageJson = JSON.parse(Buffer.from(packageResponse.data.content, 'base64').toString('utf-8'));
+      packageJson = JSON.parse(
+        Buffer.from(packageResponse.data.content, "base64").toString("utf-8"),
+      );
     } catch (error) {
       // console.log('No package.json found');
     }
 
     // Fetch full repository structure recursively
-    const structure = await fetchRepoStructureRecursive(owner, repo, '', headers);
-    
+    const structure = await fetchRepoStructure(owner, repo, headers);
+
+
     // Detect architecture patterns
     const patterns = detectArchitecture(structure);
+
     
+
     // Enhance tech stack with package.json dependencies
     let techStack = Object.keys(languagesResponse.data);
+
     if (packageJson) {
-      const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
-      // Get ALL dependencies, not just filtered ones
+      const deps = {
+        ...packageJson.dependencies,
+        ...packageJson.devDependencies,
+      };
       const allDeps = Object.keys(deps);
-      techStack = [...new Set([...techStack, ...allDeps])];
+      techStack = [...techStack, ...allDeps];
     }
+
+    // Normalize + remove duplicates (case insensitive)
+    // Normalize + remove duplicates (case insensitive)
+const techMap = new Map();
+
+techStack.forEach((tech) => {
+  techMap.set(tech.toLowerCase(), tech);
+});
+
+techStack = Array.from(techMap.values());
+
+
 
     // Generate architecture
     const architecture = generateArchitecture(patterns, techStack);
@@ -338,18 +473,20 @@ app.post("/analyzepage", async (req, res) => {
       structure: structure,
       architecture: architecture,
       patterns: patterns,
-      packageJson: packageJson ? {
-        scripts: packageJson.scripts,
-        dependencies: Object.keys(packageJson.dependencies || {}).length,
-        devDependencies: Object.keys(packageJson.devDependencies || {}).length
-      } : null
+      packageJson: packageJson
+        ? {
+            scripts: packageJson.scripts,
+            dependencies: Object.keys(packageJson.dependencies || {}).length,
+            devDependencies: Object.keys(packageJson.devDependencies || {})
+              .length,
+          }
+        : null,
     });
-
   } catch (error) {
     console.error("FULL ERROR:", error.response?.data || error.message);
     res.status(500).json({
       error: "Failed to analyze repository",
-      details: error.response?.data || error.message
+      details: error.response?.data || error.message,
     });
   }
 });
