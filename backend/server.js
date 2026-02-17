@@ -18,7 +18,7 @@ async function fetchRepoStructure(owner, repo, headers) {
     // 1️⃣ Get default branch
     const repoInfo = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}`,
-      { headers }
+      { headers },
     );
 
     const branch = repoInfo.data.default_branch;
@@ -26,7 +26,7 @@ async function fetchRepoStructure(owner, repo, headers) {
     // 2️⃣ Get full tree recursively
     const treeResponse = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
-      { headers }
+      { headers },
     );
 
     const files = treeResponse.data.tree;
@@ -68,7 +68,6 @@ async function fetchRepoStructure(owner, repo, headers) {
     return [];
   }
 }
-
 
 // Detect architecture patterns from file structure
 function detectArchitecture(structure) {
@@ -194,6 +193,62 @@ function generateArchitecture(patterns, techStack) {
   return architecture;
 }
 
+async function detectTechStack(owner, repo, branch, headers) {
+  try {
+    const packageResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/contents/package.json?ref=${branch}`,
+      { headers },
+    );
+
+    const content = JSON.parse(
+      Buffer.from(packageResponse.data.content, "base64").toString(),
+    );
+
+    const deps = {
+      ...content.dependencies,
+      ...content.devDependencies,
+    };
+
+    const techStack = [];
+
+    if (deps.react) techStack.push("React");
+    if (deps["react-dom"]) techStack.push("React DOM");
+    if (deps.next) techStack.push("Next.js");
+    if (deps.express) techStack.push("Express.js");
+    if (deps.mongodb) techStack.push("MongoDB");
+    if (deps.mongoose) techStack.push("Mongoose");
+    if (deps.tailwindcss) techStack.push("Tailwind CSS");
+    if (deps.vite) techStack.push("Vite");
+    if (deps.typescript) techStack.push("TypeScript");
+    if (deps.prisma) techStack.push("Prisma");
+    if (deps["@reduxjs/toolkit"]) techStack.push("Redux Toolkit");
+
+    return techStack;
+  } catch (error) {
+    console.log("No package.json found");
+    return [];
+  }
+}
+
+function isNoisePackage(pkg) {
+  const noisePrefixes = [
+    "@babel/",
+    "@rollup/",
+    "@types/",
+    "eslint",
+    "jest",
+    "prettier",
+    "babel-",
+    "rollup-",
+    "webpack",
+    "tsup",
+    "husky",
+    "commitlint",
+  ];
+
+  return noisePrefixes.some((prefix) => pkg.toLowerCase().startsWith(prefix));
+}
+
 // NEW FUNCTION: Categorize tech stack
 function categorizeTechStack(techStack, packageJson) {
   const categories = {
@@ -289,10 +344,9 @@ function categorizeTechStack(techStack, packageJson) {
     "commitlint",
     "typescript",
   ];
-techStack.forEach((rawTech) => {
-  const tech = normalizeTechName(rawTech);
-  const t = tech.toLowerCase();
-
+  techStack.forEach((rawTech) => {
+    const tech = normalizeTechName(rawTech);
+    const t = tech.toLowerCase();
 
     // 1️⃣ Languages first
     if (languages.includes(t)) {
@@ -301,7 +355,10 @@ techStack.forEach((rawTech) => {
     }
 
     // 2️⃣ Dev Dependencies priority
-    if (packageJson?.devDependencies?.[tech]) {
+    if (
+      packageJson?.devDependencies &&
+      Object.keys(packageJson.devDependencies).includes(rawTech)
+    ) {
       categories.devTools.push(tech);
       return;
     }
@@ -335,33 +392,108 @@ techStack.forEach((rawTech) => {
   });
 
   Object.keys(categories).forEach((key) => {
-  const map = new Map();
+    const map = new Map();
 
-  categories[key].forEach((item) => {
-    const normalized = normalizeTechName(item);
-    map.set(normalized.toLowerCase(), normalized);
+    categories[key].forEach((item) => {
+      const normalized = normalizeTechName(item);
+      map.set(normalized.toLowerCase(), normalized);
+    });
+
+    categories[key] = Array.from(map.values()).sort((a, b) =>
+      a.localeCompare(b),
+    );
   });
-
-  categories[key] = Array.from(map.values()).sort((a, b) =>
-    a.localeCompare(b)
-  );
-});
-
 
   return categories;
 }
 
 function normalizeTechName(name) {
-      const map = {
-        typescript: "TypeScript",
-        javascript: "JavaScript",
-        html: "HTML",
-        css: "CSS",
-        json: "JSON",
-      };
+  const map = {
+    typescript: "TypeScript",
+    javascript: "JavaScript",
+    html: "HTML",
+    css: "CSS",
+    json: "JSON",
+  };
 
-      return map[name.toLowerCase()] || name;
+  return map[name.toLowerCase()] || name;
+}
+
+async function fetchAllPackageJsonFiles(owner, repo, branch, headers) {
+  try {
+    const treeResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+      { headers },
+    );
+
+    const tree = treeResponse.data.tree;
+
+    const packageFiles = tree.filter(
+      (item) => item.path.endsWith("package.json") && item.type === "blob",
+    );
+
+    const allDependencies = {};
+    const allDevDependencies = {};
+
+    for (const file of packageFiles) {
+      try {
+        const fileResponse = await axios.get(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${branch}`,
+          { headers },
+        );
+
+        const content = JSON.parse(
+          Buffer.from(fileResponse.data.content, "base64").toString(),
+        );
+
+        Object.assign(allDependencies, content.dependencies || {});
+        Object.assign(allDevDependencies, content.devDependencies || {});
+      } catch (err) {
+        console.log("Error reading", file.path);
+      }
     }
+
+    return {
+      dependencies: allDependencies,
+      devDependencies: allDevDependencies,
+    };
+  } catch (error) {
+    console.log("Error fetching package.json files");
+    return null;
+  }
+}
+
+function detectProjectType(repoName, techStack) {
+  const name = repoName.toLowerCase();
+
+  const frameworkKeywords = [
+    "react",
+    "vue",
+    "angular",
+    "express",
+    "lodash",
+    "axios",
+    "next",
+  ];
+
+  if (frameworkKeywords.includes(name)) {
+    return "Framework / Library";
+  }
+
+  if (techStack.includes("React") && techStack.includes("Express")) {
+    return "Full Stack Application";
+  }
+
+  if (techStack.includes("React")) {
+    return "Frontend Application";
+  }
+
+  if (techStack.includes("Express")) {
+    return "Backend Application";
+  }
+
+  return "Software Project";
+}
 
 app.post("/analyzepage", async (req, res) => {
   try {
@@ -393,6 +525,25 @@ app.post("/analyzepage", async (req, res) => {
       { headers },
     );
 
+    const branch = repoResponse.data.default_branch;
+
+    const packageJson = await fetchAllPackageJsonFiles(
+      owner,
+      repo,
+      branch,
+      headers,
+    );
+
+    let techStack = Object.keys(languagesResponse.data);
+
+    if (packageJson) {
+      const allDeps = Object.keys(packageJson.dependencies || {});
+
+      const filteredDeps = allDeps.filter((dep) => !isNoisePackage(dep));
+
+      techStack = [...techStack, ...filteredDeps];
+    }
+
     // Fetch README to detect more tech stack info
     let readmeContent = "";
     try {
@@ -408,55 +559,25 @@ app.post("/analyzepage", async (req, res) => {
       console.log("No README found");
     }
 
-    // Fetch package.json if exists (for npm projects)
-    let packageJson = null;
-    try {
-      const packageResponse = await axios.get(
-        `https://api.github.com/repos/${owner}/${repo}/contents/package.json`,
-        { headers },
-      );
-      packageJson = JSON.parse(
-        Buffer.from(packageResponse.data.content, "base64").toString("utf-8"),
-      );
-    } catch (error) {
-      // console.log('No package.json found');
-    }
-
     // Fetch full repository structure recursively
     const structure = await fetchRepoStructure(owner, repo, headers);
-
 
     // Detect architecture patterns
     const patterns = detectArchitecture(structure);
 
-    
-
-    // Enhance tech stack with package.json dependencies
-    let techStack = Object.keys(languagesResponse.data);
-
-    if (packageJson) {
-      const deps = {
-        ...packageJson.dependencies,
-        ...packageJson.devDependencies,
-      };
-      const allDeps = Object.keys(deps);
-      techStack = [...techStack, ...allDeps];
-    }
-
     // Normalize + remove duplicates (case insensitive)
     // Normalize + remove duplicates (case insensitive)
-const techMap = new Map();
+    const techMap = new Map();
 
-techStack.forEach((tech) => {
-  techMap.set(tech.toLowerCase(), tech);
-});
+    techStack.forEach((tech) => {
+      techMap.set(tech.toLowerCase(), tech);
+    });
 
-techStack = Array.from(techMap.values());
-
-
+    techStack = Array.from(techMap.values());
 
     // Generate architecture
     const architecture = generateArchitecture(patterns, techStack);
+    const projectType = detectProjectType(repoResponse.data.name, techStack);
 
     // NEW: Categorize the tech stack
     const categorizedTech = categorizeTechStack(techStack, packageJson);
@@ -468,6 +589,7 @@ techStack = Array.from(techMap.values());
       stars: repoResponse.data.stargazers_count,
       forks: repoResponse.data.forks_count,
       openIssues: repoResponse.data.open_issues_count,
+      projectType: projectType,
       techStack: techStack,
       categorizedTech: categorizedTech, // ADD THIS
       structure: structure,

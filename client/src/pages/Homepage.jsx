@@ -270,7 +270,7 @@ export default function HomePage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/analyzepage")}
-              className="text-sm text-[#94A3B8] hover:text-white transition px-4 py-2 rounded-lg hover:bg-[#1A1F2E]"
+              className="text-sm text-[#e0e0e0] hover:text-white transition px-4 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#60A5FA]"
             >
               New Analysis
             </button>
