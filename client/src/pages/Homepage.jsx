@@ -30,6 +30,7 @@ export default function HomePage() {
   const [expandedFolders, setExpandedFolders] = useState({});
   const [structure, setStructure] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState(false);
+  const [expandedArchSections, setExpandedArchSections] = useState({});
 
   useEffect(() => {
     if (analysis?.structure) {
@@ -179,7 +180,7 @@ export default function HomePage() {
 
   // Category colors
   const categoryColors = {
-    languages: "from-indigo-500 to-blue-500", // ADD THIS
+    languages: "from-indigo-500 to-blue-500",
     frontend: "from-blue-500 to-cyan-500",
     backend: "from-green-500 to-emerald-500",
     database: "from-purple-500 to-indigo-500",
@@ -488,96 +489,192 @@ export default function HomePage() {
                   System Architecture
                 </h2>
 
+                {/* Architecture Type Badges */}
+                {analysis.projectType && (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
+                      {analysis.projectType.isMonorepo
+                        ? "📦 Monorepo"
+                        : "📁 Single App"}
+                    </span>
+                    {analysis.projectType.hasClientServer && (
+                      <span className="px-3 py-1 bg-[#1A1F2E] text-green-400 rounded-full text-xs font-medium border border-[#334155]">
+                        🔄 Client-Server
+                      </span>
+                    )}
+                    {analysis.architecture?.frontend &&
+                      analysis.architecture.frontend !== "unknown" && (
+                        <span className="px-3 py-1 bg-[#1A1F2E] text-blue-400 rounded-full text-xs font-medium border border-[#334155]">
+                          🎨 {analysis.architecture.frontend}
+                        </span>
+                      )}
+                    {analysis.architecture?.backend &&
+                      analysis.architecture.backend !== "unknown" && (
+                        <span className="px-3 py-1 bg-[#1A1F2E] text-green-400 rounded-full text-xs font-medium border border-[#334155]">
+                          ⚙️ {analysis.architecture.backend}
+                        </span>
+                      )}
+                  </div>
+                )}
+
                 {/* Architecture Flow Diagram */}
                 <div className="relative mb-8">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
-                      <p className="text-xs text-[#94A3B8] mb-1">Entry</p>
-                      <p className="text-sm text-white font-medium">
-                        {analysis.techStack?.includes("TypeScript")
-                          ? "main.tsx"
-                          : "index.js"}
-                      </p>
+                  {analysis.projectType?.hasClientServer ? (
+                    // Client-Server Architecture Diagram
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl p-4 border border-blue-500/30">
+                          <p className="text-xs text-blue-400 mb-1">
+                            📱 Frontend (Client)
+                          </p>
+                          <p className="text-sm text-white font-medium">
+                            React App
+                          </p>
+                          <p className="text-xs text-[#94A3B8] mt-1">
+                            Port: 5173
+                          </p>
+                        </div>
+                        <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
+                        <div className="flex-1 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl p-4 border border-green-500/30">
+                          <p className="text-xs text-green-400 mb-1">
+                            ⚙️ Backend (API)
+                          </p>
+                          <p className="text-sm text-white font-medium">
+                            Express Server
+                          </p>
+                          <p className="text-xs text-[#94A3B8] mt-1">
+                            Port: 5000
+                          </p>
+                        </div>
+                        <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
+                        <div className="flex-1 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-xl p-4 border border-purple-500/30">
+                          <p className="text-xs text-purple-400 mb-1">
+                            🗄️ Database
+                          </p>
+                          <p className="text-sm text-white font-medium">
+                            MongoDB
+                          </p>
+                          <p className="text-xs text-[#94A3B8] mt-1">
+                            {analysis.codePatterns?.usesMongoose
+                              ? "Mongoose ODM"
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
-                    <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
-                      <p className="text-xs text-[#94A3B8] mb-1">App</p>
-                      <p className="text-sm text-white font-medium">
-                        {analysis.techStack?.includes("TypeScript")
-                          ? "App.tsx"
-                          : "App.js"}
-                      </p>
-                    </div>
-                    <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
-                    <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
-                      <p className="text-xs text-[#94A3B8] mb-1">Router</p>
-                      <p className="text-sm text-white font-medium">
-                        Routes/Pages
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Left Column - Architecture Details */}
-                  <div className="space-y-4">
-                    {/* Entry Point */}
-                    <div className="border-l-2 border-[#60A5FA] pl-3">
-                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-1">
-                        Entry Point
-                      </h3>
-                      <p className="text-sm text-white">
-                        {analysis.techStack?.includes("TypeScript")
-                          ? "main.tsx → App.tsx"
-                          : "index.js → App.js"}
-                      </p>
-                    </div>
-
-                    {/* Auth Flow (if detected) */}
-                    {analysis.architecture?.authFlow && (
-                      <div className="border-l-2 border-green-500 pl-3">
-                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-1">
-                          Auth Flow
-                        </h3>
-                        <p className="text-sm text-white">
-                          {analysis.architecture.authFlow}
+                  ) : (
+                    // Simple Architecture Diagram
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
+                        <p className="text-xs text-[#94A3B8] mb-1">Entry</p>
+                        <p className="text-sm text-white font-medium">
+                          {analysis.techStack?.includes("TypeScript")
+                            ? "main.tsx"
+                            : "index.js"}
                         </p>
                       </div>
-                    )}
+                      <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
+                      <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
+                        <p className="text-xs text-[#94A3B8] mb-1">App</p>
+                        <p className="text-sm text-white font-medium">
+                          {analysis.techStack?.includes("TypeScript")
+                            ? "App.tsx"
+                            : "App.js"}
+                        </p>
+                      </div>
+                      <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
+                      <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
+                        <p className="text-xs text-[#94A3B8] mb-1">Router</p>
+                        <p className="text-sm text-white font-medium">
+                          Routes/Pages
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Architecture Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-4">
+                    {/* Entry Points */}
+                    {analysis.architecture?.entryPoints &&
+                      analysis.architecture.entryPoints.length > 0 && (
+                        <div className="border-l-2 border-[#60A5FA] pl-3">
+                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                            Entry Points
+                          </h3>
+                          {analysis.architecture.entryPoints.map((entry, i) => (
+                            <p key={i} className="text-sm text-white mb-1">
+                              • {entry}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                    {/* Layers */}
+                    {analysis.architecture?.layers &&
+                      analysis.architecture.layers.length > 0 && (
+                        <div className="border-l-2 border-green-500 pl-3">
+                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                            Architecture Layers
+                          </h3>
+                          {analysis.architecture.layers.map((layer, i) => (
+                            <p key={i} className="text-sm text-white mb-1">
+                              • {layer}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                   </div>
 
-                  {/* Right Column - Data Flow */}
+                  {/* Right Column */}
                   <div className="space-y-4">
                     {/* Data Flow */}
-                    <div className="border-l-2 border-purple-500 pl-3">
-                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-1">
-                        Data Flow
-                      </h3>
-                      {analysis.architecture?.dataFlow?.length > 0 ? (
-                        analysis.architecture.dataFlow.map((flow, i) => (
-                          <p key={i} className="text-sm text-white">
+                    {analysis.architecture?.dataFlow &&
+                    analysis.architecture.dataFlow.length > 0 ? (
+                      <div className="border-l-2 border-purple-500 pl-3">
+                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                          Data Flow
+                        </h3>
+                        {analysis.architecture.dataFlow.map((flow, i) => (
+                          <p key={i} className="text-sm text-white mb-1">
                             {flow}
                           </p>
-                        ))
-                      ) : (
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="border-l-2 border-purple-500 pl-3">
+                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                          Data Flow
+                        </h3>
                         <p className="text-sm text-white">
                           Components → API → Database
                         </p>
-                      )}
-                    </div>
-
-                    {/* Dependencies */}
-                    {analysis.packageJson && (
-                      <div className="border-l-2 border-yellow-500 pl-3">
-                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-1">
-                          Dependencies
-                        </h3>
-                        <p className="text-sm text-white">
-                          {analysis.packageJson.dependencies} direct •{" "}
-                          {analysis.packageJson.devDependencies} dev
-                        </p>
                       </div>
                     )}
+
+                    {/* Components */}
+                    {analysis.architecture?.components &&
+                      analysis.architecture.components.length > 0 && (
+                        <div className="border-l-2 border-yellow-500 pl-3">
+                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                            Key Components
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {analysis.architecture.components.map(
+                              (component, i) => (
+                                <span
+                                  key={i}
+                                  className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
+                                >
+                                  {component}
+                                </span>
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      )}
                   </div>
                 </div>
 

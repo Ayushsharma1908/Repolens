@@ -12,10 +12,11 @@ app.get("/", (req, res) => {
   res.json({ message: "RepoLens backend running 🚀" });
 });
 
-// Recursively fetch repository structure
+/* ===============================
+   FETCH FULL REPO STRUCTURE
+================================ */
 async function fetchRepoStructure(owner, repo, headers) {
   try {
-    // 1️⃣ Get default branch
     const repoInfo = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}`,
       { headers },
@@ -23,15 +24,12 @@ async function fetchRepoStructure(owner, repo, headers) {
 
     const branch = repoInfo.data.default_branch;
 
-    // 2️⃣ Get full tree recursively
     const treeResponse = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
       { headers },
     );
 
     const files = treeResponse.data.tree;
-
-    // 3️⃣ Build nested structure from flat paths
     const root = [];
 
     files.forEach((file) => {
@@ -69,189 +67,179 @@ async function fetchRepoStructure(owner, repo, headers) {
   }
 }
 
-// Detect architecture patterns from file structure
-function detectArchitecture(structure) {
-  const patterns = {
-    hasComponents: false,
-    hasServices: false,
-    hasUtils: false,
-    hasHooks: false,
-    hasContext: false,
-    hasRedux: false,
-    hasApi: false,
-    hasDb: false,
-    hasModels: false,
-    hasControllers: false,
-    hasRoutes: false,
-    hasMiddleware: false,
-    hasConfig: false,
+/* ===============================
+   STATIC FILE CONTENT FETCHER
+================================ */
+async function fetchFileContent(owner, repo, path, branch, headers) {
+  try {
+    const res = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
+      { headers },
+    );
+
+    return Buffer.from(res.data.content, "base64").toString("utf-8");
+  } catch {
+    return null;
+  }
+}
+
+/* ===============================
+   CODE PATTERN ANALYZER
+================================ */
+async function analyzeCodePatterns(owner, repo, branch, headers, structure) {
+  const codePatterns = {
+    expressApp: false,
+    usesRouting: false,
+    usesMongoose: false,
+    reactApp: false,
+    usesHooks: false,
+    usesContext: false,
+    usesRedux: false,
+    mvcPattern: false,
   };
 
-  const searchPatterns = (items) => {
+  const importantFiles = [];
+
+  function collectFiles(items) {
+    items.forEach((item) => {
+      if (item.type === "file") {
+        if (/\.(js|ts|jsx|tsx)$/i.test(item.name)) {
+          importantFiles.push(item.path);
+        }
+      }
+      if (item.children) collectFiles(item.children);
+    });
+  }
+
+  collectFiles(structure);
+
+  // limit scan to prevent rate limit
+  const limitedFiles = importantFiles.slice(0, 25);
+
+  for (const filePath of limitedFiles) {
+    const content = await fetchFileContent(
+      owner,
+      repo,
+      filePath,
+      branch,
+      headers,
+    );
+
+    if (!content) continue;
+
+    const lower = content.toLowerCase();
+
+    if (lower.includes("express(")) codePatterns.expressApp = true;
+    if (lower.includes("express.router")) codePatterns.usesRouting = true;
+    if (lower.includes("mongoose.model")) codePatterns.usesMongoose = true;
+
+    if (lower.includes("from 'react'") || lower.includes('from "react"'))
+      codePatterns.reactApp = true;
+
+    if (lower.includes("usestate(") || lower.includes("useeffect("))
+      codePatterns.usesHooks = true;
+
+    if (lower.includes("createcontext(")) codePatterns.usesContext = true;
+
+    if (lower.includes("@reduxjs/toolkit")) codePatterns.usesRedux = true;
+
+    if (lower.includes("../models") && lower.includes("controller"))
+      codePatterns.mvcPattern = true;
+  }
+
+  return codePatterns;
+}
+
+/* ===============================
+   FOLDER BASED ARCHITECTURE
+================================ */
+function detectArchitecture(structure) {
+  const patterns = {
+    hasControllers: false,
+    hasModels: false,
+    hasRoutes: false,
+  };
+
+  function scan(items) {
     items.forEach((item) => {
       const name = item.name.toLowerCase();
       const path = item.path?.toLowerCase() || "";
 
-      // Detect patterns based on folder/file names
-      if (name.includes("component") || path.includes("/components/"))
-        patterns.hasComponents = true;
-      if (name.includes("service") || path.includes("/services/"))
-        patterns.hasServices = true;
-      if (name.includes("util") || path.includes("/utils/"))
-        patterns.hasUtils = true;
-      if (name.includes("hook") || path.includes("/hooks/"))
-        patterns.hasHooks = true;
-      if (name.includes("context") || path.includes("/context/"))
-        patterns.hasContext = true;
-      if (name.includes("redux") || name.includes("store"))
-        patterns.hasRedux = true;
-      if (name.includes("api") || path.includes("/api/"))
-        patterns.hasApi = true;
-      if (
-        name.includes("db") ||
-        name.includes("database") ||
-        path.includes("/db/")
-      )
-        patterns.hasDb = true;
-      if (name.includes("model") || path.includes("/models/"))
-        patterns.hasModels = true;
       if (name.includes("controller") || path.includes("/controllers/"))
         patterns.hasControllers = true;
+
+      if (name.includes("model") || path.includes("/models/"))
+        patterns.hasModels = true;
+
       if (name.includes("route") || path.includes("/routes/"))
         patterns.hasRoutes = true;
-      if (name.includes("middleware") || path.includes("/middleware/"))
-        patterns.hasMiddleware = true;
-      if (name.includes("config") || path.includes("/config/"))
-        patterns.hasConfig = true;
 
-      // Recursively search children
-      if (item.children) {
-        searchPatterns(item.children);
-      }
+      if (item.children) scan(item.children);
     });
-  };
+  }
 
-  searchPatterns(structure);
+  scan(structure);
   return patterns;
 }
 
-// Generate architecture description based on patterns
-function generateArchitecture(patterns, techStack) {
-  const architecture = {
-    entryPoint: techStack.includes("TypeScript")
-      ? "main.tsx → App.tsx → Router"
-      : "index.js → App.js → Router",
-    dataFlow: [],
-    patterns: [],
-    layers: [],
+/* ===============================
+   DETECT PROJECT TYPE & ARCHITECTURE
+================================ */
+function detectProjectType(structure, codePatterns, packageJson) {
+  const projectType = {
+    isMonorepo: false,
+    hasClientServer: false,
+    hasSeparateFolders: false,
+    frontendType: "unknown",
+    backendType: "unknown",
+    architecture: [],
   };
 
-  // Determine architecture type
-  if (patterns.hasComponents && patterns.hasServices) {
-    architecture.layers.push("Component Layer", "Service Layer");
-    architecture.dataFlow.push("Components → Services → API");
+  // Check for client/server folder structure
+  let hasClientFolder = false;
+  let hasServerFolder = false;
+  let hasSrcFolder = false;
+
+  function scanFolders(items) {
+    items.forEach((item) => {
+      if (item.type === "dir") {
+        if (item.name === "client") hasClientFolder = true;
+        if (item.name === "server") hasServerFolder = true;
+        if (item.name === "src") hasSrcFolder = true;
+        if (item.children) scanFolders(item.children);
+      }
+    });
   }
 
-  if (patterns.hasControllers && patterns.hasModels) {
-    architecture.layers.push("Controller Layer", "Model Layer");
-    architecture.dataFlow.push("Routes → Controllers → Models");
+  scanFolders(structure);
+
+  projectType.hasClientServer = hasClientFolder && hasServerFolder;
+  projectType.hasSeparateFolders =
+    hasClientFolder || hasServerFolder || hasSrcFolder;
+  projectType.isMonorepo = hasClientFolder && hasServerFolder;
+
+  // Determine frontend type
+  if (codePatterns.reactApp) {
+    projectType.frontendType = "React";
+    projectType.architecture.push("React Frontend");
   }
 
-  if (patterns.hasApi && patterns.hasDb) {
-    architecture.dataFlow.push("API Layer → Database Layer");
+  // Determine backend type
+  if (codePatterns.expressApp) {
+    projectType.backendType = "Express";
+    projectType.architecture.push("Express Backend");
   }
 
-  if (patterns.hasRedux || patterns.hasContext) {
-    architecture.patterns.push(
-      patterns.hasRedux
-        ? "Redux State Management"
-        : "Context API State Management",
-    );
+  if (codePatterns.usesMongoose) {
+    projectType.architecture.push("MongoDB with Mongoose");
   }
 
-  if (patterns.hasHooks) {
-    architecture.patterns.push("React Hooks");
-  }
-
-  if (patterns.hasMiddleware) {
-    architecture.patterns.push("Middleware Pattern");
-  }
-
-  if (techStack.includes("Prisma")) {
-    architecture.patterns.push("Prisma ORM");
-  }
-
-  // Generate auth flow if detected
-  if (
-    patterns.hasMiddleware ||
-    techStack.includes("JWT") ||
-    techStack.includes("auth")
-  ) {
-    architecture.authFlow = "JWT Authentication with Context API";
-  }
-
-  return architecture;
+  return projectType;
 }
 
-async function detectTechStack(owner, repo, branch, headers) {
-  try {
-    const packageResponse = await axios.get(
-      `https://api.github.com/repos/${owner}/${repo}/contents/package.json?ref=${branch}`,
-      { headers },
-    );
-
-    const content = JSON.parse(
-      Buffer.from(packageResponse.data.content, "base64").toString(),
-    );
-
-    const deps = {
-      ...content.dependencies,
-      ...content.devDependencies,
-    };
-
-    const techStack = [];
-
-    if (deps.react) techStack.push("React");
-    if (deps["react-dom"]) techStack.push("React DOM");
-    if (deps.next) techStack.push("Next.js");
-    if (deps.express) techStack.push("Express.js");
-    if (deps.mongodb) techStack.push("MongoDB");
-    if (deps.mongoose) techStack.push("Mongoose");
-    if (deps.tailwindcss) techStack.push("Tailwind CSS");
-    if (deps.vite) techStack.push("Vite");
-    if (deps.typescript) techStack.push("TypeScript");
-    if (deps.prisma) techStack.push("Prisma");
-    if (deps["@reduxjs/toolkit"]) techStack.push("Redux Toolkit");
-
-    return techStack;
-  } catch (error) {
-    console.log("No package.json found");
-    return [];
-  }
-}
-
-function isNoisePackage(pkg) {
-  const noisePrefixes = [
-    "@babel/",
-    "@rollup/",
-    "@types/",
-    "eslint",
-    "jest",
-    "prettier",
-    "babel-",
-    "rollup-",
-    "webpack",
-    "tsup",
-    "husky",
-    "commitlint",
-  ];
-
-  return noisePrefixes.some((prefix) => pkg.toLowerCase().startsWith(prefix));
-}
-
-// NEW FUNCTION: Categorize tech stack
-function categorizeTechStack(techStack, packageJson) {
-  const categories = {
+function categorizeTech(languages, packageJson) {
+  const categorized = {
+    languages: languages || [], // Languages from GitHub
     frontend: [],
     backend: [],
     database: [],
@@ -260,350 +248,464 @@ function categorizeTechStack(techStack, packageJson) {
     cloud: [],
     testing: [],
     mobile: [],
-    languages: [],
     other: [],
   };
 
-  const languages = [
-    "javascript",
-    "typescript",
-    "html",
-    "css",
-    "python",
-    "java",
-    "c",
-    "cpp",
-    "c#",
-    "go",
-    "rust",
-    "php",
-  ];
+  if (!packageJson) {
+    console.log("⚠️ No package.json data for categorization");
+    return categorized;
+  }
 
-  const frontendKeywords = [
-    "react",
-    "vue",
-    "angular",
-    "next",
-    "nuxt",
-    "svelte",
-    "tailwind",
-    "bootstrap",
-    "chakra",
-    "material",
-    "redux",
-    "zustand",
-    "mobx",
-    "react-router",
-  ];
-
-  const backendKeywords = [
-    "express",
-    "nestjs",
-    "fastify",
-    "koa",
-    "django",
-    "flask",
-    "spring",
-    "rails",
-    "graphql",
-    "apollo",
-  ];
-
-  const databaseKeywords = [
-    "mongo",
-    "mongoose",
-    "postgres",
-    "mysql",
-    "sqlite",
-    "redis",
-    "prisma",
-    "typeorm",
-    "sequelize",
-    "firebase",
-    "supabase",
-  ];
-
-  const testingKeywords = [
-    "jest",
-    "vitest",
-    "cypress",
-    "playwright",
-    "testing-library",
-    "mocha",
-    "chai",
-  ];
-
-  const devToolKeywords = [
-    "eslint",
-    "prettier",
-    "babel",
-    "webpack",
-    "vite",
-    "swc",
-    "husky",
-    "commitlint",
-    "typescript",
-  ];
-  techStack.forEach((rawTech) => {
-    const tech = normalizeTechName(rawTech);
-    const t = tech.toLowerCase();
-
-    // 1️⃣ Languages first
-    if (languages.includes(t)) {
-      categories.languages.push(tech);
-      return;
-    }
-
-    // 2️⃣ Dev Dependencies priority
-    if (
-      packageJson?.devDependencies &&
-      Object.keys(packageJson.devDependencies).includes(rawTech)
-    ) {
-      categories.devTools.push(tech);
-      return;
-    }
-
-    // 3️⃣ Testing
-    if (testingKeywords.some((k) => t.includes(k))) {
-      categories.testing.push(tech);
-      return;
-    }
-
-    // 4️⃣ Database
-    if (databaseKeywords.some((k) => t.includes(k))) {
-      categories.database.push(tech);
-      return;
-    }
-
-    // 5️⃣ Backend
-    if (backendKeywords.some((k) => t.includes(k))) {
-      categories.backend.push(tech);
-      return;
-    }
-
-    // 6️⃣ Frontend
-    if (frontendKeywords.some((k) => t.includes(k))) {
-      categories.frontend.push(tech);
-      return;
-    }
-
-    // 7️⃣ Default
-    categories.other.push(tech);
-  });
-
-  Object.keys(categories).forEach((key) => {
-    const map = new Map();
-
-    categories[key].forEach((item) => {
-      const normalized = normalizeTechName(item);
-      map.set(normalized.toLowerCase(), normalized);
-    });
-
-    categories[key] = Array.from(map.values()).sort((a, b) =>
-      a.localeCompare(b),
-    );
-  });
-
-  return categories;
-}
-
-function normalizeTechName(name) {
-  const map = {
-    typescript: "TypeScript",
-    javascript: "JavaScript",
-    html: "HTML",
-    css: "CSS",
-    json: "JSON",
+  const allDeps = {
+    ...packageJson.dependencies,
+    ...packageJson.devDependencies,
   };
 
-  return map[name.toLowerCase()] || name;
-}
+  console.log("🔍 Processing dependencies:", Object.keys(allDeps));
 
-async function fetchAllPackageJsonFiles(owner, repo, branch, headers) {
-  try {
-    const treeResponse = await axios.get(
-      `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
-      { headers },
-    );
+  // Process each dependency
+  Object.keys(allDeps || {}).forEach((dep) => {
+    const lower = dep.toLowerCase();
+    let categorized_flag = false;
 
-    const tree = treeResponse.data.tree;
-
-    const packageFiles = tree.filter(
-      (item) => item.path.endsWith("package.json") && item.type === "blob",
-    );
-
-    const allDependencies = {};
-    const allDevDependencies = {};
-
-    for (const file of packageFiles) {
-      try {
-        const fileResponse = await axios.get(
-          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${branch}`,
-          { headers },
-        );
-
-        const content = JSON.parse(
-          Buffer.from(fileResponse.data.content, "base64").toString(),
-        );
-
-        Object.assign(allDependencies, content.dependencies || {});
-        Object.assign(allDevDependencies, content.devDependencies || {});
-      } catch (err) {
-        console.log("Error reading", file.path);
-      }
+    // FRONTEND frameworks & libraries
+    if (
+      lower.includes("react") ||
+      lower.includes("next") ||
+      lower.includes("vue") ||
+      lower.includes("angular") ||
+      lower.includes("svelte") ||
+      lower.includes("vite") ||
+      lower.includes("tailwind") ||
+      lower.includes("bootstrap") ||
+      lower.includes("jquery") ||
+      lower.includes("redux") ||
+      lower.includes("mobx") ||
+      lower.includes("react-router") ||
+      lower.includes("axios") ||
+      lower.includes("lucide") ||
+      lower.includes("framer-motion") ||
+      lower.includes("emotion") ||
+      lower.includes("styled-components")
+    ) {
+      categorized.frontend.push(dep);
+      categorized_flag = true;
     }
 
-    return {
-      dependencies: allDependencies,
-      devDependencies: allDevDependencies,
-    };
-  } catch (error) {
-    console.log("Error fetching package.json files");
-    return null;
-  }
+    // BACKEND frameworks & libraries
+    else if (
+      lower.includes("express") ||
+      lower.includes("node") ||
+      lower.includes("nestjs") ||
+      lower.includes("fastify") ||
+      lower.includes("koa") ||
+      lower.includes("django") ||
+      lower.includes("flask") ||
+      lower.includes("spring") ||
+      lower.includes("jwt") ||
+      lower.includes("jsonwebtoken") ||
+      lower.includes("bcrypt") ||
+      lower.includes("passport") ||
+      lower.includes("cors") ||
+      lower.includes("helmet") ||
+      lower.includes("socket.io") ||
+      lower.includes("graphql") ||
+      lower.includes("apollo") ||
+      lower.includes("trpc")
+    ) {
+      categorized.backend.push(dep);
+      categorized_flag = true;
+    }
+
+    // DATABASE related
+    else if (
+      lower.includes("mongoose") ||
+      lower.includes("mongodb") ||
+      lower.includes("prisma") ||
+      lower.includes("typeorm") ||
+      lower.includes("sequelize") ||
+      lower.includes("postgres") ||
+      lower.includes("mysql") ||
+      lower.includes("redis") ||
+      lower.includes("sqlite") ||
+      lower.includes("firebase") ||
+      lower.includes("supabase")
+    ) {
+      categorized.database.push(dep);
+      categorized_flag = true;
+    }
+
+    // AI/ML related
+    else if (
+      lower.includes("openai") ||
+      lower.includes("groq") ||
+      lower.includes("langchain") ||
+      lower.includes("anthropic") ||
+      lower.includes("cohere") ||
+      lower.includes("huggingface") ||
+      lower.includes("transformers") ||
+      lower.includes("tensorflow") ||
+      lower.includes("pytorch") ||
+      lower.includes("keras") ||
+      lower.includes("scikit-learn") ||
+      lower.includes("llm") ||
+      lower.includes("ai")
+    ) {
+      categorized.ai_ml.push(dep);
+      categorized_flag = true;
+    }
+
+    // TESTING frameworks
+    else if (
+      lower.includes("jest") ||
+      lower.includes("vitest") ||
+      lower.includes("mocha") ||
+      lower.includes("chai") ||
+      lower.includes("cypress") ||
+      lower.includes("playwright") ||
+      lower.includes("puppeteer") ||
+      lower.includes("testing-library")
+    ) {
+      categorized.testing.push(dep);
+      categorized_flag = true;
+    }
+
+    // CLOUD services
+    else if (
+      lower.includes("aws") ||
+      lower.includes("azure") ||
+      lower.includes("gcp") ||
+      lower.includes("vercel") ||
+      lower.includes("netlify") ||
+      lower.includes("cloudflare") ||
+      lower.includes("heroku") ||
+      lower.includes("render")
+    ) {
+      categorized.cloud.push(dep);
+      categorized_flag = true;
+    }
+
+    // MOBILE
+    else if (
+      lower.includes("react-native") ||
+      lower.includes("expo") ||
+      lower.includes("flutter") ||
+      lower.includes("ionic")
+    ) {
+      categorized.mobile.push(dep);
+      categorized_flag = true;
+    }
+
+    // DEV TOOLS
+    else if (
+      lower.includes("eslint") ||
+      lower.includes("prettier") ||
+      lower.includes("husky") ||
+      lower.includes("lint-staged") ||
+      lower.includes("babel") ||
+      lower.includes("typescript") ||
+      lower.includes("ts-node") ||
+      lower.includes("nodemon") ||
+      lower.includes("dotenv") ||
+      lower.includes("webpack") ||
+      lower.includes("vite") ||
+      lower.includes("rollup") ||
+      lower.includes("parcel")
+    ) {
+      categorized.devTools.push(dep);
+      categorized_flag = true;
+    }
+
+    // EVERYTHING ELSE
+    else {
+      categorized.other.push(dep);
+    }
+  });
+
+  // Sort all categories alphabetically
+  Object.keys(categorized).forEach((key) => {
+    categorized[key].sort((a, b) => a.localeCompare(b));
+  });
+
+  console.log(
+    "✅ Categorized tech:",
+    Object.fromEntries(
+      Object.entries(categorized).map(([k, v]) => [k, v.length]),
+    ),
+  );
+
+  return categorized;
 }
 
-function detectProjectType(repoName, techStack) {
-  const name = repoName.toLowerCase();
+/* ===============================
+   GENERATE ARCHITECTURE
+================================ */
+/* ===============================
+   GENERATE ARCHITECTURE
+================================ */
+function generateArchitecture(
+  patterns,
+  techStack,
+  codePatterns,
+  structure,
+  projectType,
+) {
+  const architecture = {
+    type: projectType.hasClientServer
+      ? "Full-Stack Monorepo"
+      : "Single Application",
+    frontend: projectType.frontendType,
+    backend: projectType.backendType,
+    layers: [],
+    patterns: [],
+    dataFlow: [],
+    components: [],
+    entryPoints: [],
+  };
 
-  const frameworkKeywords = [
-    "react",
-    "vue",
-    "angular",
-    "express",
-    "lodash",
-    "axios",
-    "next",
-  ];
-
-  if (frameworkKeywords.includes(name)) {
-    return "Framework / Library";
+  // Add layers based on detection
+  if (codePatterns.reactApp) {
+    architecture.layers.push("📱 Frontend (React)");
+    architecture.components.push(
+      "React Components",
+      "Pages/Routes",
+      "Hooks/Context",
+    );
   }
 
-  if (techStack.includes("React") && techStack.includes("Express")) {
-    return "Full Stack Application";
+  if (codePatterns.expressApp) {
+    architecture.layers.push("⚙️ Backend (Express)");
+    architecture.components.push("API Routes", "Controllers", "Middleware");
   }
 
-  if (techStack.includes("React")) {
-    return "Frontend Application";
+  if (patterns.hasModels || codePatterns.usesMongoose) {
+    architecture.layers.push("🗄️ Database Layer");
+    architecture.components.push("Data Models", "Database Connection");
   }
 
-  if (techStack.includes("Express")) {
-    return "Backend Application";
+  // Add patterns
+  if (codePatterns.mvcPattern) {
+    architecture.patterns.push("MVC Architecture");
+  }
+  if (codePatterns.usesHooks) {
+    architecture.patterns.push("React Hooks");
+  }
+  if (patterns.hasRoutes) {
+    architecture.patterns.push("RESTful API Structure");
+  }
+  if (projectType.hasClientServer) {
+    architecture.patterns.push("Client-Server Architecture");
   }
 
-  return "Software Project";
+  // Add data flow
+  if (projectType.hasClientServer) {
+    architecture.dataFlow = [
+      "1. Client makes HTTP request to API endpoint",
+      "2. Express routes handle request → pass to controller",
+      "3. Controller processes → interacts with models",
+      "4. Model queries database → returns data",
+      "5. Controller formats response → sends back to client",
+      "6. Client updates UI with response data",
+    ];
+  } else {
+    architecture.dataFlow = ["UI → Logic → Data"];
+  }
+
+  // Add entry points
+  if (projectType.hasClientServer) {
+    architecture.entryPoints = [
+      "Frontend: client/src/main.jsx",
+      "Backend: server/src/server.js or app.js",
+    ];
+  } else {
+    architecture.entryPoints = ["src/index.js or src/App.js"];
+  }
+
+  return architecture;
 }
 
+/* ===============================
+   ANALYZE ROUTE
+================================ */
 app.post("/analyzepage", async (req, res) => {
   try {
     const repoUrl = req.body?.repoUrl;
-
-    if (!repoUrl) {
+    if (!repoUrl)
       return res.status(400).json({ error: "Repo URL is required" });
-    }
 
-    // Extract owner and repo
     const cleanedUrl = repoUrl
       .replace("https://github.com/", "")
       .replace(".git", "");
+
     const [owner, repo] = cleanedUrl.split("/");
 
     const headers = process.env.GITHUB_TOKEN
       ? { Authorization: `token ${process.env.GITHUB_TOKEN}` }
       : {};
 
-    // Fetch repo basic info
     const repoResponse = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}`,
       { headers },
     );
 
-    // Fetch languages
     const languagesResponse = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}/languages`,
       { headers },
     );
 
     const branch = repoResponse.data.default_branch;
+    let packageJsonData = null;
+    let allDependencies = [];
 
-    const packageJson = await fetchAllPackageJsonFiles(
+    // Try root package.json
+    try {
+      const rootPkg = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/contents/package.json?ref=${branch}`,
+        { headers },
+      );
+      packageJsonData = JSON.parse(
+        Buffer.from(rootPkg.data.content, "base64").toString("utf-8"),
+      );
+      console.log("✅ Found root package.json");
+    } catch (err) {
+      console.log("📁 No root package.json");
+    }
+
+    // Try client/package.json
+    try {
+      const clientPkg = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/contents/client/package.json?ref=${branch}`,
+        { headers },
+      );
+      const clientData = JSON.parse(
+        Buffer.from(clientPkg.data.content, "base64").toString("utf-8"),
+      );
+
+      // Merge with existing packageJsonData or create new
+      if (!packageJsonData) {
+        packageJsonData = clientData;
+      } else {
+        // Merge dependencies
+        packageJsonData.dependencies = {
+          ...packageJsonData.dependencies,
+          ...clientData.dependencies,
+        };
+        packageJsonData.devDependencies = {
+          ...packageJsonData.devDependencies,
+          ...clientData.devDependencies,
+        };
+      }
+      console.log("✅ Found client/package.json");
+    } catch (err) {
+      console.log("📁 No client/package.json");
+    }
+
+    // Try server/package.json
+    try {
+      const serverPkg = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/contents/server/package.json?ref=${branch}`,
+        { headers },
+      );
+      const serverData = JSON.parse(
+        Buffer.from(serverPkg.data.content, "base64").toString("utf-8"),
+      );
+
+      // Merge with existing packageJsonData
+      if (!packageJsonData) {
+        packageJsonData = serverData;
+      } else {
+        // Merge dependencies
+        packageJsonData.dependencies = {
+          ...packageJsonData.dependencies,
+          ...serverData.dependencies,
+        };
+        packageJsonData.devDependencies = {
+          ...packageJsonData.devDependencies,
+          ...serverData.devDependencies,
+        };
+      }
+      console.log("✅ Found server/package.json");
+    } catch (err) {
+      console.log("📁 No server/package.json");
+    }
+
+    // Debug log to see what we found
+    if (packageJsonData) {
+      const allDeps = {
+        ...packageJsonData.dependencies,
+        ...packageJsonData.devDependencies,
+      };
+      console.log("📦 All dependencies found:", Object.keys(allDeps));
+    } else {
+      console.log("❌ No package.json found anywhere");
+    }
+
+    const structure = await fetchRepoStructure(owner, repo, headers);
+
+    const folderPatterns = detectArchitecture(structure);
+
+    const codePatterns = await analyzeCodePatterns(
       owner,
       repo,
       branch,
       headers,
+      structure,
     );
 
-    let techStack = Object.keys(languagesResponse.data);
+    const techStack = Object.keys(languagesResponse.data);
+    // Right after creating categorizedTech, add:
+    const categorizedTech = categorizeTech(techStack, packageJsonData);
+    console.log(
+      "📦 Package.json deps:",
+      packageJsonData
+        ? Object.keys({
+            ...packageJsonData.dependencies,
+            ...packageJsonData.devDependencies,
+          })
+        : [],
+    );
+    console.log("🏷️ Categorized Tech:", categorizedTech);
+    // Detect project type
+    const projectType = detectProjectType(
+      structure,
+      codePatterns,
+      packageJsonData,
+    );
 
-    if (packageJson) {
-      const allDeps = Object.keys(packageJson.dependencies || {});
+    // Generate enhanced architecture
+    const architecture = generateArchitecture(
+      folderPatterns,
+      techStack,
+      codePatterns,
+      structure,
+      projectType,
+    );
 
-      const filteredDeps = allDeps.filter((dep) => !isNoisePackage(dep));
-
-      techStack = [...techStack, ...filteredDeps];
-    }
-
-    // Fetch README to detect more tech stack info
-    let readmeContent = "";
-    try {
-      const readmeResponse = await axios.get(
-        `https://api.github.com/repos/${owner}/${repo}/readme`,
-        { headers },
-      );
-      readmeContent = Buffer.from(
-        readmeResponse.data.content,
-        "base64",
-      ).toString("utf-8");
-    } catch (error) {
-      console.log("No README found");
-    }
-
-    // Fetch full repository structure recursively
-    const structure = await fetchRepoStructure(owner, repo, headers);
-
-    // Detect architecture patterns
-    const patterns = detectArchitecture(structure);
-
-    // Normalize + remove duplicates (case insensitive)
-    // Normalize + remove duplicates (case insensitive)
-    const techMap = new Map();
-
-    techStack.forEach((tech) => {
-      techMap.set(tech.toLowerCase(), tech);
-    });
-
-    techStack = Array.from(techMap.values());
-
-    // Generate architecture
-    const architecture = generateArchitecture(patterns, techStack);
-    const projectType = detectProjectType(repoResponse.data.name, techStack);
-
-    // NEW: Categorize the tech stack
-    const categorizedTech = categorizeTechStack(techStack, packageJson);
+    console.log("CATEGORIZED TECH:", categorizedTech);
 
     res.json({
-      name: repoResponse.data.name,
-      fullName: repoResponse.data.full_name,
-      description: repoResponse.data.description,
-      stars: repoResponse.data.stargazers_count,
-      forks: repoResponse.data.forks_count,
-      openIssues: repoResponse.data.open_issues_count,
-      projectType: projectType,
-      techStack: techStack,
-      categorizedTech: categorizedTech, // ADD THIS
-      structure: structure,
-      architecture: architecture,
-      patterns: patterns,
-      packageJson: packageJson
-        ? {
-            scripts: packageJson.scripts,
-            dependencies: Object.keys(packageJson.dependencies || {}).length,
-            devDependencies: Object.keys(packageJson.devDependencies || {})
-              .length,
-          }
-        : null,
-    });
+  name: repoResponse.data.name,
+  fullName: repoResponse.data.full_name,
+  description: repoResponse.data.description,
+  stars: repoResponse.data.stargazers_count,
+  forks: repoResponse.data.forks_count,
+  openIssues: repoResponse.data.open_issues_count,
+  techStack,
+  categorizedTech,
+  packageJson: packageJsonData
+    ? {
+        dependencies: Object.keys(packageJsonData.dependencies || {})
+          .length,
+        devDependencies: Object.keys(packageJsonData.devDependencies || {})
+          .length,
+      }
+    : null,
+  structure,
+  architecture,
+  projectType,        // ← ADD THIS LINE
+  folderPatterns,
+  codePatterns,
+});
   } catch (error) {
     console.error("FULL ERROR:", error.response?.data || error.message);
     res.status(500).json({
