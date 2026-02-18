@@ -682,30 +682,32 @@ app.post("/analyzepage", async (req, res) => {
     );
 
     console.log("CATEGORIZED TECH:", categorizedTech);
+    console.log("📤 Sending projectType:", projectType);
+    console.log("📤 hasClientServer:", projectType?.hasClientServer);
 
     res.json({
-  name: repoResponse.data.name,
-  fullName: repoResponse.data.full_name,
-  description: repoResponse.data.description,
-  stars: repoResponse.data.stargazers_count,
-  forks: repoResponse.data.forks_count,
-  openIssues: repoResponse.data.open_issues_count,
-  techStack,
-  categorizedTech,
-  packageJson: packageJsonData
-    ? {
-        dependencies: Object.keys(packageJsonData.dependencies || {})
-          .length,
-        devDependencies: Object.keys(packageJsonData.devDependencies || {})
-          .length,
-      }
-    : null,
-  structure,
-  architecture,
-  projectType,        // ← ADD THIS LINE
-  folderPatterns,
-  codePatterns,
-});
+      name: repoResponse.data.name,
+      fullName: repoResponse.data.full_name,
+      description: repoResponse.data.description,
+      stars: repoResponse.data.stargazers_count,
+      forks: repoResponse.data.forks_count,
+      openIssues: repoResponse.data.open_issues_count,
+      techStack,
+      categorizedTech,
+      packageJson: packageJsonData
+        ? {
+            dependencies: Object.keys(packageJsonData.dependencies || {})
+              .length,
+            devDependencies: Object.keys(packageJsonData.devDependencies || {})
+              .length,
+          }
+        : null,
+      structure,
+      architecture,
+      projectType, // ← ADD THIS LINE
+      folderPatterns,
+      codePatterns,
+    });
   } catch (error) {
     console.error("FULL ERROR:", error.response?.data || error.message);
     res.status(500).json({

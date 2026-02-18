@@ -21,6 +21,8 @@ import {
   DevicePhoneMobileIcon,
   QuestionMarkCircleIcon,
   ChevronUpIcon,
+  PlusIcon,
+  PlusCircleIcon,
 } from "@heroicons/react/24/outline";
 
 export default function HomePage() {
@@ -271,8 +273,9 @@ export default function HomePage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/analyzepage")}
-              className="text-sm text-[#e0e0e0] hover:text-white transition px-4 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#60A5FA]"
+              className="text-sm text-white hover:text-white transition px-4 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#60A5FA] flex items-center gap-2"
             >
+              <PlusCircleIcon className="w-6 h-6" />
               New Analysis
             </button>
           </div>
@@ -528,10 +531,24 @@ export default function HomePage() {
                             📱 Frontend (Client)
                           </p>
                           <p className="text-sm text-white font-medium">
-                            React App
+                            {analysis.codePatterns?.reactApp
+                              ? "React App"
+                              : "Frontend App"}
                           </p>
                           <p className="text-xs text-[#94A3B8] mt-1">
-                            Port: 5173
+                            {analysis.categorizedTech?.frontend?.some((t) =>
+                              t.includes("vite"),
+                            )
+                              ? "Port: 5173"
+                              : analysis.categorizedTech?.frontend?.some((t) =>
+                                    t.includes("next"),
+                                  )
+                                ? "Port: 3000"
+                                : analysis.categorizedTech?.frontend?.some(
+                                      (t) => t.includes("webpack"),
+                                    )
+                                  ? "Port: 8080"
+                                  : ""}
                           </p>
                         </div>
                         <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
@@ -540,26 +557,38 @@ export default function HomePage() {
                             ⚙️ Backend (API)
                           </p>
                           <p className="text-sm text-white font-medium">
-                            Express Server
+                            {analysis.codePatterns?.expressApp
+                              ? "Express Server"
+                              : "Backend Server"}
                           </p>
                           <p className="text-xs text-[#94A3B8] mt-1">
-                            Port: 5000
-                          </p>
-                        </div>
-                        <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
-                        <div className="flex-1 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-xl p-4 border border-purple-500/30">
-                          <p className="text-xs text-purple-400 mb-1">
-                            🗄️ Database
-                          </p>
-                          <p className="text-sm text-white font-medium">
-                            MongoDB
-                          </p>
-                          <p className="text-xs text-[#94A3B8] mt-1">
-                            {analysis.codePatterns?.usesMongoose
-                              ? "Mongoose ODM"
+                            {analysis.categorizedTech?.backend?.length > 0
+                              ? "Port: 5000"
                               : ""}
                           </p>
                         </div>
+                        <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
+                        {/* Only show if database OR AI/ML technologies are detected */}
+                        {(analysis.categorizedTech?.database?.length > 0 ||
+                          analysis.categorizedTech?.ai_ml?.length > 0) && (
+                          <div className="flex-1 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-xl p-4 border border-purple-500/30">
+                            <p className="text-xs text-purple-400 mb-1">
+                              {analysis.categorizedTech?.database?.length > 0
+                                ? "🗄️ Database"
+                                : "🤖 External API"}
+                            </p>
+                            <p className="text-sm text-white font-medium">
+                              {analysis.categorizedTech?.database?.[0] ||
+                                analysis.categorizedTech?.ai_ml?.[0] ||
+                                "External Service"}
+                            </p>
+                            <p className="text-xs text-[#94A3B8] mt-1">
+                              {analysis.codePatterns?.usesMongoose
+                                ? "Mongoose ODM"
+                                : ""}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
