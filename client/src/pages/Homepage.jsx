@@ -29,10 +29,40 @@ export default function HomePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const analysis = location.state?.analysis;
+  const architecture = analysis?.architecture || {};
   const [expandedFolders, setExpandedFolders] = useState({});
   const [structure, setStructure] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState(false);
   const [expandedArchSections, setExpandedArchSections] = useState({});
+  // Helper function to find Python files in the structure
+  const findPythonFiles = (items, path = "") => {
+    let pythonFiles = [];
+
+    const search = (items, currentPath) => {
+      items.forEach((item) => {
+        const fullPath = currentPath
+          ? `${currentPath}/${item.name}`
+          : item.name;
+        if (item.type === "file" && item.name.endsWith(".py")) {
+          pythonFiles.push(fullPath);
+        }
+        if (item.children) {
+          search(item.children, fullPath);
+        }
+      });
+    };
+
+    search(items, "");
+    return pythonFiles;
+  };
+  
+  useEffect(() => {
+  if (analysis?.structure) {
+    setStructure(analysis.structure);
+  }
+  console.log("Analysis data:", analysis);
+  console.log("Architecture data:", analysis?.architecture); // Add this to debug
+}, [analysis]);
 
   useEffect(() => {
     if (analysis?.structure) {
@@ -492,226 +522,138 @@ export default function HomePage() {
                   System Architecture
                 </h2>
 
-                {/* Architecture Type Badges */}
-                {analysis.projectType && (
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
-                      {analysis.projectType.isMonorepo
-                        ? "📦 Monorepo"
-                        : "📁 Single App"}
-                    </span>
-                    {analysis.projectType.hasClientServer && (
+                {/* Project Type Badge -直接从analysis获取，因为你的后端把数据放在顶层 */}
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
+                    {analysis?.architecture?.type || "Unknown Project Type"}
+                  </span>
+                  {analysis?.architecture?.primaryLanguage &&
+                    analysis.architecture.primaryLanguage !== "Unknown" && (
                       <span className="px-3 py-1 bg-[#1A1F2E] text-green-400 rounded-full text-xs font-medium border border-[#334155]">
-                        🔄 Client-Server
+                        🎯 {analysis.architecture.primaryLanguage}
                       </span>
                     )}
-                    {analysis.architecture?.frontend &&
-                      analysis.architecture.frontend !== "unknown" && (
-                        <span className="px-3 py-1 bg-[#1A1F2E] text-blue-400 rounded-full text-xs font-medium border border-[#334155]">
-                          🎨 {analysis.architecture.frontend}
-                        </span>
-                      )}
-                    {analysis.architecture?.backend &&
-                      analysis.architecture.backend !== "unknown" && (
-                        <span className="px-3 py-1 bg-[#1A1F2E] text-green-400 rounded-full text-xs font-medium border border-[#334155]">
-                          ⚙️ {analysis.architecture.backend}
-                        </span>
-                      )}
-                  </div>
-                )}
+                </div>
 
-                {/* Architecture Flow Diagram */}
-                <div className="relative mb-8">
-                  {analysis.projectType?.hasClientServer ? (
-                    // Client-Server Architecture Diagram
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl p-4 border border-blue-500/30">
-                          <p className="text-xs text-blue-400 mb-1">
-                            📱 Frontend (Client)
-                          </p>
-                          <p className="text-sm text-white font-medium">
-                            {analysis.codePatterns?.reactApp
-                              ? "React App"
-                              : "Frontend App"}
-                          </p>
-                          <p className="text-xs text-[#94A3B8] mt-1">
-                            {analysis.categorizedTech?.frontend?.some((t) =>
-                              t.includes("vite"),
-                            )
-                              ? "Port: 5173"
-                              : analysis.categorizedTech?.frontend?.some((t) =>
-                                    t.includes("next"),
-                                  )
-                                ? "Port: 3000"
-                                : analysis.categorizedTech?.frontend?.some(
-                                      (t) => t.includes("webpack"),
-                                    )
-                                  ? "Port: 8080"
-                                  : ""}
-                          </p>
-                        </div>
-                        <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
-                        <div className="flex-1 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl p-4 border border-green-500/30">
-                          <p className="text-xs text-green-400 mb-1">
-                            ⚙️ Backend (API)
-                          </p>
-                          <p className="text-sm text-white font-medium">
-                            {analysis.codePatterns?.expressApp
-                              ? "Express Server"
-                              : "Backend Server"}
-                          </p>
-                          <p className="text-xs text-[#94A3B8] mt-1">
-                            {analysis.categorizedTech?.backend?.length > 0
-                              ? "Port: 5000"
-                              : ""}
-                          </p>
-                        </div>
-                        <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
-                        {/* Only show if database OR AI/ML technologies are detected */}
-                        {(analysis.categorizedTech?.database?.length > 0 ||
-                          analysis.categorizedTech?.ai_ml?.length > 0) && (
-                          <div className="flex-1 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-xl p-4 border border-purple-500/30">
-                            <p className="text-xs text-purple-400 mb-1">
-                              {analysis.categorizedTech?.database?.length > 0
-                                ? "🗄️ Database"
-                                : "🤖 External API"}
-                            </p>
-                            <p className="text-sm text-white font-medium">
-                              {analysis.categorizedTech?.database?.[0] ||
-                                analysis.categorizedTech?.ai_ml?.[0] ||
-                                "External Service"}
-                            </p>
-                            <p className="text-xs text-[#94A3B8] mt-1">
-                              {analysis.codePatterns?.usesMongoose
-                                ? "Mongoose ODM"
-                                : ""}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    // Simple Architecture Diagram
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
-                        <p className="text-xs text-[#94A3B8] mb-1">Entry</p>
-                        <p className="text-sm text-white font-medium">
-                          {analysis.techStack?.includes("TypeScript")
-                            ? "main.tsx"
-                            : "index.js"}
-                        </p>
-                      </div>
-                      <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
-                      <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
-                        <p className="text-xs text-[#94A3B8] mb-1">App</p>
-                        <p className="text-sm text-white font-medium">
-                          {analysis.techStack?.includes("TypeScript")
-                            ? "App.tsx"
-                            : "App.js"}
-                        </p>
-                      </div>
-                      <ChevronRightIcon className="w-5 h-5 text-[#60A5FA] flex-shrink-0" />
-                      <div className="flex-1 bg-[#1A1F2E] rounded-xl p-4 border border-[#334155]">
-                        <p className="text-xs text-[#94A3B8] mb-1">Router</p>
-                        <p className="text-sm text-white font-medium">
-                          Routes/Pages
-                        </p>
+                {/* Dependencies */}
+                {analysis?.architecture?.dependencies &&
+                  analysis.architecture.dependencies.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                        Package Management
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {analysis.architecture.dependencies.map((dep, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
+                          >
+                            {dep}
+                          </span>
+                        ))}
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* Architecture Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Column */}
-                  <div className="space-y-4">
-                    {/* Entry Points */}
-                    {analysis.architecture?.entryPoints &&
-                      analysis.architecture.entryPoints.length > 0 && (
-                        <div className="border-l-2 border-[#60A5FA] pl-3">
-                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                            Entry Points
-                          </h3>
-                          {analysis.architecture.entryPoints.map((entry, i) => (
-                            <p key={i} className="text-sm text-white mb-1">
-                              • {entry}
-                            </p>
-                          ))}
-                        </div>
-                      )}
+                {/* Architecture Layers */}
+                {analysis?.architecture?.layers &&
+                  analysis.architecture.layers.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                        Architecture Layers
+                      </h3>
+                      <div className="space-y-2">
+                        {analysis.architecture.layers.map((layer, i) => (
+                          <div
+                            key={i}
+                            className="border-l-2 border-[#60A5FA] pl-3"
+                          >
+                            <p className="text-sm text-white">{layer}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                    {/* Layers */}
-                    {analysis.architecture?.layers &&
-                      analysis.architecture.layers.length > 0 && (
-                        <div className="border-l-2 border-green-500 pl-3">
-                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                            Architecture Layers
-                          </h3>
-                          {analysis.architecture.layers.map((layer, i) => (
-                            <p key={i} className="text-sm text-white mb-1">
-                              • {layer}
-                            </p>
-                          ))}
-                        </div>
-                      )}
+                {/* Entry Points - 使用从后端获取的实际entry points */}
+                {analysis?.architecture?.entryPoints &&
+                analysis.architecture.entryPoints.length > 0 ? (
+                  <div className="mb-4">
+                    <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                      Entry Points
+                    </h3>
+                    <div className="space-y-1">
+                      {analysis.architecture.entryPoints.map((entry, i) => (
+                        <p key={i} className="text-sm text-white font-mono">
+                          • {entry}
+                        </p>
+                      ))}
+                    </div>
                   </div>
+                ) : (
+                  // 如果没有entry points，显示从文件结构中找到的Python文件
+                  analysis?.structure && (
+                    <div className="mb-4">
+                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                        Python Files
+                      </h3>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {findPythonFiles(analysis.structure)
+                          .slice(0, 5)
+                          .map((file, i) => (
+                            <p key={i} className="text-sm text-white font-mono">
+                              • {file}
+                            </p>
+                          ))}
+                      </div>
+                    </div>
+                  )
+                )}
 
-                  {/* Right Column */}
-                  <div className="space-y-4">
-                    {/* Data Flow */}
-                    {analysis.architecture?.dataFlow &&
-                    analysis.architecture.dataFlow.length > 0 ? (
-                      <div className="border-l-2 border-purple-500 pl-3">
-                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                          Data Flow
-                        </h3>
+                {/* Components/Directories */}
+                {analysis?.architecture?.components &&
+                  analysis.architecture.components.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                        Key Components
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {analysis.architecture.components.map(
+                          (component, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
+                            >
+                              📁 {component}
+                            </span>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Data Flow */}
+                {analysis?.architecture?.dataFlow &&
+                  analysis.architecture.dataFlow.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                        Data Flow
+                      </h3>
+                      <div className="space-y-1">
                         {analysis.architecture.dataFlow.map((flow, i) => (
-                          <p key={i} className="text-sm text-white mb-1">
-                            {flow}
+                          <p key={i} className="text-sm text-white">
+                            • {flow}
                           </p>
                         ))}
                       </div>
-                    ) : (
-                      <div className="border-l-2 border-purple-500 pl-3">
-                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                          Data Flow
-                        </h3>
-                        <p className="text-sm text-white">
-                          Components → API → Database
-                        </p>
-                      </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Components */}
-                    {analysis.architecture?.components &&
-                      analysis.architecture.components.length > 0 && (
-                        <div className="border-l-2 border-yellow-500 pl-3">
-                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                            Key Components
-                          </h3>
-                          <div className="flex flex-wrap gap-2">
-                            {analysis.architecture.components.map(
-                              (component, i) => (
-                                <span
-                                  key={i}
-                                  className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
-                                >
-                                  {component}
-                                </span>
-                              ),
-                            )}
-                          </div>
-                        </div>
-                      )}
-                  </div>
-                </div>
-
-                {/* Detected Patterns */}
-                {analysis.architecture?.patterns &&
+                {/* Patterns */}
+                {analysis?.architecture?.patterns &&
                   analysis.architecture.patterns.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-[#334155]">
-                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-3">
+                    <div>
+                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
                         Detected Patterns
                       </h3>
                       <div className="flex flex-wrap gap-2">

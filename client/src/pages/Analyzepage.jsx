@@ -19,7 +19,7 @@ export default function AnalyzePage() {
     setError(null);
 
     try {
-      const response = await fetch("http://localhost:5000/analyzepage", {
+      const response = await fetch("http://localhost:5000/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -27,13 +27,12 @@ export default function AnalyzePage() {
         body: JSON.stringify({ repoUrl }),
       });
 
-      const data = await response.json();
-      console.log("Backend response:", data);
-
-      // ❗ STOP if backend failed
       if (!response.ok) {
-        throw new Error(data.error || "Failed to analyze repository");
+        const text = await response.text();
+        throw new Error(text);
       }
+
+      const data = await response.json();
 
       // ✅ Only navigate if success
       navigate("/homepage", {
