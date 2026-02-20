@@ -23,17 +23,37 @@ import {
   ChevronUpIcon,
   PlusIcon,
   PlusCircleIcon,
+  ClockIcon,
+  UserGroupIcon,
+  ShieldCheckIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 
 export default function HomePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const analysis = location.state?.analysis;
-  const architecture = analysis?.architecture || {};
+
+  // Access the nested data correctly
+  const metadata = analysis?.metadata || {};
+  const basicAnalysis = analysis?.basicAnalysis || {};
+  const enhancedAnalysis = analysis?.enhancedAnalysis || {};
+  const aiAnalysis = analysis?.aiAnalysis || {};
+  const stats = analysis?.stats || {};
+
   const [expandedFolders, setExpandedFolders] = useState({});
   const [structure, setStructure] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState(false);
-  const [expandedArchSections, setExpandedArchSections] = useState({});
+  const [expandedSections, setExpandedSections] = useState({
+    overview: true,
+    techStack: true,
+    architecture: true,
+    features: true,
+    suggestions: true,
+    files: true,
+    activity: true,
+  });
+
   // Helper function to find Python files in the structure
   const findPythonFiles = (items, path = "") => {
     let pythonFiles = [];
@@ -55,21 +75,14 @@ export default function HomePage() {
     search(items, "");
     return pythonFiles;
   };
-  
-  useEffect(() => {
-  if (analysis?.structure) {
-    setStructure(analysis.structure);
-  }
-  console.log("Analysis data:", analysis);
-  console.log("Architecture data:", analysis?.architecture); // Add this to debug
-}, [analysis]);
 
   useEffect(() => {
     if (analysis?.structure) {
       setStructure(analysis.structure);
     }
-    // Log to see what data we're getting
-    console.log("Analysis data:", analysis);
+    console.log("Full analysis data:", analysis);
+    console.log("AI Analysis:", aiAnalysis);
+    console.log("Enhanced Analysis:", enhancedAnalysis);
   }, [analysis]);
 
   const toggleFolder = (path) => {
@@ -78,6 +91,32 @@ export default function HomePage() {
       [path]: !prev[path],
     }));
   };
+
+  const toggleSection = (section) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
+  useEffect(() => {
+    if (aiAnalysis.mainTechnologies) {
+      console.log("Main Technologies raw data:", aiAnalysis.mainTechnologies);
+      aiAnalysis.mainTechnologies.forEach((tech, index) => {
+        if (typeof tech === "object") {
+          console.log(`Tech at index ${index} is an object:`, tech);
+        }
+      });
+    }
+
+    if (aiAnalysis.layers) {
+      console.log("Layers raw data:", aiAnalysis.layers);
+    }
+
+    if (aiAnalysis.patternsDetected) {
+      console.log("Patterns raw data:", aiAnalysis.patternsDetected);
+    }
+  }, [aiAnalysis]);
 
   // Get appropriate icon based on file extension
   const getFileIcon = (filename) => {
@@ -97,63 +136,154 @@ export default function HomePage() {
       return <CodeBracketIcon className="w-4 h-4 text-red-400" />;
     } else if (["md", "markdown"].includes(extension)) {
       return <DocumentIcon className="w-4 h-4 text-purple-400" />;
+    } else if (["py"].includes(extension)) {
+      return <CodeBracketIcon className="w-4 h-4 text-green-400" />;
+    } else if (["java"].includes(extension)) {
+      return <CodeBracketIcon className="w-4 h-4 text-orange-400" />;
     } else {
       return <DocumentIcon className="w-4 h-4 text-[#64748B]" />;
     }
   };
 
   const renderStructure = (items, level = 0, path = "") => {
-    if (!items || !Array.isArray(items)) return null;
-
-    return items.map((item) => {
-      const currentPath = `${path}/${item.name}`;
-      const isExpanded = expandedFolders[currentPath];
-      const indent = level * 16;
-
-      if (item.type === "dir") {
-        return (
-          <div key={currentPath} className="select-none">
-            <div
-              className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 cursor-pointer transition-all duration-200 group"
-              style={{ marginLeft: `${indent}px` }}
-              onClick={() => toggleFolder(currentPath)}
-            >
-              <span className="text-[#94A3B8] group-hover:text-[#60A5FA] transition-colors">
-                {isExpanded ? (
-                  <ChevronDownIcon className="w-4 h-4" />
-                ) : (
-                  <ChevronRightIcon className="w-4 h-4" />
-                )}
-              </span>
-              <FolderIcon
-                className={`w-5 h-5 transition-colors ${isExpanded ? "text-[#60A5FA]" : "text-[#94A3B8] group-hover:text-[#60A5FA]"}`}
-              />
-              <span className="text-gray-300 text-sm font-medium group-hover:text-white transition-colors">
-                {item.name}
-              </span>
-            </div>
-            {isExpanded && item.children && (
-              <div className="border-l border-[#334155] ml-6 pl-2">
-                {renderStructure(item.children, level + 1, currentPath)}
-              </div>
-            )}
-          </div>
-        );
-      }
-
+    if (!items || !Array.isArray(items)) {
       return (
-        <div
-          key={currentPath}
-          className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 transition-all duration-200 group"
-          style={{ marginLeft: `${indent + 24}px` }}
-        >
-          {getFileIcon(item.name)}
-          <span className="text-gray-400 text-sm group-hover:text-white transition-colors">
-            {item.name}
-          </span>
+        <div className="text-center py-8 text-[#94A3B8]">
+          <FolderIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p className="text-sm">No files to display</p>
         </div>
       );
+    }
+
+    if (items.length === 0) {
+      return (
+        <div className="text-center py-8 text-[#94A3B8]">
+          <FolderIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p className="text-sm">Repository is empty</p>
+        </div>
+      );
+    }
+
+    // Sort items: directories first, then files alphabetically
+    const sortedItems = [...items].sort((a, b) => {
+      if (a.type === "dir" && b.type === "file") return -1;
+      if (a.type === "file" && b.type === "dir") return 1;
+      return a.name.localeCompare(b.name);
     });
+
+    // Calculate stats for display
+    const totalItems = items.length;
+    const dirCount = items.filter((item) => item.type === "dir").length;
+    const fileCount = items.filter((item) => item.type === "file").length;
+
+    return (
+      <>
+        {/* Show stats at root level only */}
+        {level === 0 && (
+          <div className="mb-3 px-3 py-2 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] flex justify-between">
+            <span>📁 {dirCount} folders</span>
+            <span>📄 {fileCount} files</span>
+          </div>
+        )}
+
+        {sortedItems.map((item) => {
+          const currentPath = `${path}/${item.name}`;
+          const isExpanded = expandedFolders[currentPath];
+          const indent = level * 16;
+
+          if (item.type === "dir") {
+            // Count items in directory for badge
+            const childCount = item.children?.length || 0;
+            const childDirs =
+              item.children?.filter((c) => c.type === "dir").length || 0;
+            const childFiles = childCount - childDirs;
+
+            return (
+              <div key={currentPath} className="select-none">
+                <div
+                  className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 cursor-pointer transition-all duration-200 group"
+                  style={{ marginLeft: `${indent}px` }}
+                  onClick={() => toggleFolder(currentPath)}
+                >
+                  <span className="text-[#94A3B8] group-hover:text-[#60A5FA] transition-colors">
+                    {isExpanded ? (
+                      <ChevronDownIcon className="w-4 h-4" />
+                    ) : (
+                      <ChevronRightIcon className="w-4 h-4" />
+                    )}
+                  </span>
+                  <FolderIcon
+                    className={`w-5 h-5 transition-colors ${isExpanded ? "text-[#60A5FA]" : "text-[#94A3B8] group-hover:text-[#60A5FA]"}`}
+                  />
+                  <span className="text-gray-300 text-sm font-medium group-hover:text-white transition-colors">
+                    {item.name}
+                  </span>
+
+                  {/* Directory stats badge */}
+                  {childCount > 0 && (
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[#334155] text-[#94A3B8] group-hover:bg-[#60A5FA] group-hover:text-white transition-colors">
+                      {childDirs > 0 && `${childDirs}📁 `}
+                      {childFiles > 0 && `${childFiles}📄`}
+                    </span>
+                  )}
+                </div>
+
+                {isExpanded && item.children && (
+                  <div className="border-l border-[#334155] ml-6 pl-2">
+                    {renderStructure(item.children, level + 1, currentPath)}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // File item
+          const fileSize = item.size ? (item.size / 1024).toFixed(1) : null;
+          const fileExtension =
+            item.extension || item.name.split(".").pop() || "";
+
+          return (
+            <div
+              key={currentPath}
+              className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 transition-all duration-200 group"
+              style={{ marginLeft: `${indent + 24}px` }}
+              title={`${item.name}${fileSize ? ` (${fileSize}KB)` : ""}`}
+            >
+              {getFileIcon(item.name)}
+              <span className="text-gray-400 text-sm group-hover:text-white transition-colors truncate flex-1">
+                {item.name}
+              </span>
+
+              {/* File size badge */}
+              {fileSize && (
+                <span className="text-xs text-[#64748B] group-hover:text-[#94A3B8] ml-2">
+                  {fileSize}KB
+                </span>
+              )}
+
+              {/* Extension badge for code files */}
+              {fileExtension &&
+                [
+                  "js",
+                  "jsx",
+                  "ts",
+                  "tsx",
+                  "py",
+                  "java",
+                  "go",
+                  "rs",
+                  "css",
+                  "html",
+                ].includes(fileExtension) && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-[#334155] text-[#94A3B8] group-hover:bg-[#60A5FA] group-hover:text-white transition-colors">
+                    {fileExtension}
+                  </span>
+                )}
+            </div>
+          );
+        })}
+      </>
+    );
   };
 
   // Helper function to count files recursively
@@ -224,10 +354,209 @@ export default function HomePage() {
     other: "from-gray-500 to-slate-500",
   };
 
+  // Create categorizedTech from aiAnalysis.mainTechnologies
+  const safeTechnologies = (aiAnalysis.mainTechnologies || [])
+    .map((tech) => {
+      if (typeof tech === "string") return tech;
+      if (typeof tech === "object") {
+        // If it's an object with name or purpose, use that
+        return tech.name || tech.purpose || JSON.stringify(tech);
+      }
+      return String(tech);
+    })
+    .filter(Boolean); // Remove any null/undefined
+
+  const categorizedTech = {
+    languages:
+      aiAnalysis.mainTechnologies?.filter((tech) =>
+        [
+          "JavaScript",
+          "TypeScript",
+          "Python",
+          "Java",
+          "Go",
+          "Rust",
+          "C++",
+          "C#",
+          "PHP",
+          "Ruby",
+          "Kotlin",
+          "Swift",
+        ].includes(tech),
+      ) || [],
+    frontend:
+      aiAnalysis.mainTechnologies?.filter((tech) =>
+        [
+          "React",
+          "Vue",
+          "Angular",
+          "HTML",
+          "CSS",
+          "Tailwind",
+          "Bootstrap",
+          "Next.js",
+          "Gatsby",
+          "Svelte",
+        ].includes(tech),
+      ) || [],
+    backend:
+      aiAnalysis.mainTechnologies?.filter((tech) =>
+        [
+          "Node.js",
+          "Express",
+          "Django",
+          "Flask",
+          "Spring",
+          "Laravel",
+          "Rails",
+          "FastAPI",
+          "GraphQL",
+        ].includes(tech),
+      ) || [],
+    database:
+      aiAnalysis.mainTechnologies?.filter((tech) =>
+        [
+          "MongoDB",
+          "PostgreSQL",
+          "MySQL",
+          "Redis",
+          "SQLite",
+          "Firebase",
+          "Supabase",
+          "Prisma",
+        ].includes(tech),
+      ) || [],
+    ai_ml:
+      aiAnalysis.mainTechnologies?.filter((tech) =>
+        [
+          "TensorFlow",
+          "PyTorch",
+          "Keras",
+          "OpenAI",
+          "LLaMA",
+          "GPT",
+          "Hugging Face",
+          "LangChain",
+        ].includes(tech),
+      ) || [],
+    devTools:
+      aiAnalysis.mainTechnologies?.filter((tech) =>
+        [
+          "Docker",
+          "Kubernetes",
+          "Jenkins",
+          "GitHub Actions",
+          "Webpack",
+          "Vite",
+          "Babel",
+          "ESLint",
+        ].includes(tech),
+      ) || [],
+    cloud:
+      aiAnalysis.mainTechnologies?.filter((tech) =>
+        ["AWS", "Azure", "GCP", "Vercel", "Netlify", "Cloudflare"].includes(
+          tech,
+        ),
+      ) || [],
+    testing:
+      aiAnalysis.mainTechnologies?.filter((tech) =>
+        ["Jest", "Mocha", "Cypress", "Playwright", "Pytest", "JUnit"].includes(
+          tech,
+        ),
+      ) || [],
+    mobile:
+      aiAnalysis.mainTechnologies?.filter((tech) =>
+        [
+          "React Native",
+          "Flutter",
+          "SwiftUI",
+          "Jetpack Compose",
+          "Ionic",
+        ].includes(tech),
+      ) || [],
+    other:
+      aiAnalysis.mainTechnologies?.filter(
+        (tech) =>
+          ![
+            "JavaScript",
+            "TypeScript",
+            "Python",
+            "Java",
+            "Go",
+            "Rust",
+            "C++",
+            "C#",
+            "PHP",
+            "Ruby",
+            "Kotlin",
+            "Swift",
+            "React",
+            "Vue",
+            "Angular",
+            "HTML",
+            "CSS",
+            "Tailwind",
+            "Bootstrap",
+            "Next.js",
+            "Gatsby",
+            "Svelte",
+            "Node.js",
+            "Express",
+            "Django",
+            "Flask",
+            "Spring",
+            "Laravel",
+            "Rails",
+            "FastAPI",
+            "GraphQL",
+            "MongoDB",
+            "PostgreSQL",
+            "MySQL",
+            "Redis",
+            "SQLite",
+            "Firebase",
+            "Supabase",
+            "Prisma",
+            "TensorFlow",
+            "PyTorch",
+            "Keras",
+            "OpenAI",
+            "LLaMA",
+            "GPT",
+            "Hugging Face",
+            "LangChain",
+            "Docker",
+            "Kubernetes",
+            "Jenkins",
+            "GitHub Actions",
+            "Webpack",
+            "Vite",
+            "Babel",
+            "ESLint",
+            "AWS",
+            "Azure",
+            "GCP",
+            "Vercel",
+            "Netlify",
+            "Cloudflare",
+            "Jest",
+            "Mocha",
+            "Cypress",
+            "Playwright",
+            "Pytest",
+            "JUnit",
+            "React Native",
+            "Flutter",
+            "SwiftUI",
+            "Jetpack Compose",
+            "Ionic",
+          ].includes(tech),
+      ) || [],
+  };
+
   // Get only categories that have technologies
   const getActiveCategories = () => {
-    if (!analysis?.categorizedTech) return [];
-    return Object.entries(analysis.categorizedTech)
+    return Object.entries(categorizedTech)
       .filter(([_, techs]) => techs && Array.isArray(techs) && techs.length > 0)
       .map(([category]) => category);
   };
@@ -236,6 +565,16 @@ export default function HomePage() {
   const previewLimit = 4;
   const previewCategories = activeCategories.slice(0, previewLimit);
   const hiddenCategories = activeCategories.slice(previewLimit);
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   if (!analysis) {
     return (
@@ -312,6 +651,28 @@ export default function HomePage() {
         </nav>
       </header>
 
+      {/* Debug Info - Remove after fixing */}
+      {/* {process.env.NODE_ENV === "development" && (
+        <div className="mb-4 p-4 bg-red-900/50 rounded-lg border border-red-500">
+          <h3 className="text-white font-bold mb-2">Debug Info:</h3>
+          <pre className="text-xs text-white overflow-auto max-h-40">
+            {JSON.stringify(
+              {
+                hasStructure: !!analysis?.structure,
+                structureType: analysis?.structure
+                  ? typeof analysis.structure
+                  : "none",
+                isArray: Array.isArray(analysis?.structure),
+                structureLength: analysis?.structure?.length,
+                firstItem: analysis?.structure?.[0],
+              },
+              null,
+              2,
+            )}
+          </pre>
+        </div>
+      )} */}
+
       {/* Main Content */}
       <main className="relative px-6 py-8 md:px-12 md:py-12 z-10">
         <div className="max-w-7xl mx-auto">
@@ -321,19 +682,32 @@ export default function HomePage() {
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {analysis.name}
+                    {metadata.name || analysis.name}
                   </h1>
                   <div className="flex items-center gap-1 bg-[#1A1F2E] px-3 py-1 rounded-full border border-[#334155]">
                     <StarIcon className="w-4 h-4 text-[#FBBF24]" />
                     <span className="text-sm text-[#94A3B8]">
-                      {analysis.stars?.toLocaleString()}
+                      {metadata.stars?.toLocaleString() || 0}
                     </span>
                   </div>
                 </div>
-                {analysis.description && (
+                {metadata.description && (
                   <p className="text-[#94A3B8] text-base md:text-lg">
-                    {analysis.description}
+                    {metadata.description}
                   </p>
+                )}
+                {/* Topics */}
+                {metadata.topics && metadata.topics.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {metadata.topics.map((topic, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-lg text-xs border border-[#334155]"
+                      >
+                        #{topic}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -343,28 +717,203 @@ export default function HomePage() {
                   <CubeIcon className="w-4 h-4 text-[#60A5FA]" />
                   <span className="text-sm text-[#94A3B8]">Files:</span>
                   <span className="text-white font-semibold">
-                    {analysis.structure ? countFiles(analysis.structure) : 0}
+                    {stats.totalFiles || countFiles(analysis.structure) || 0}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 bg-[#1A1F2E] px-4 py-2 rounded-xl border border-[#334155]">
                   <FolderIcon className="w-4 h-4 text-[#60A5FA]" />
                   <span className="text-sm text-[#94A3B8]">Dirs:</span>
                   <span className="text-white font-semibold">
-                    {analysis.structure ? countDirs(analysis.structure) : 0}
+                    {stats.totalDirs || countDirs(analysis.structure) || 0}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 bg-[#1A1F2E] px-4 py-2 rounded-xl border border-[#334155]">
                   <CodeBracketIcon className="w-4 h-4 text-[#60A5FA]" />
                   <span className="text-sm text-[#94A3B8]">Technologies:</span>
                   <span className="text-white font-semibold">
-                    {analysis.categorizedTech
-                      ? Object.values(analysis.categorizedTech).flat().length
-                      : analysis.techStack?.length || 0}
+                    {aiAnalysis.mainTechnologies?.length || 0}
                   </span>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Enhanced Metrics Grid - NEW */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-gradient-to-br from-[#0F1320] to-[#1A1F2E] rounded-xl border border-[#334155] p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[#94A3B8] text-sm">Primary Language</span>
+                <CodeBracketIcon className="w-5 h-5 text-[#60A5FA]" />
+              </div>
+              <p className="text-2xl font-bold text-white">
+                {basicAnalysis.primaryLanguage || "N/A"}
+              </p>
+              <div className="mt-2 flex gap-1">
+                {Object.entries(analysis.languages || {})
+                  .slice(0, 3)
+                  .map(([lang, bytes]) => (
+                    <span
+                      key={lang}
+                      className="text-xs px-2 py-1 bg-[#1A1F2E] rounded-full text-[#94A3B8]"
+                    >
+                      {lang}
+                    </span>
+                  ))}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#0F1320] to-[#1A1F2E] rounded-xl border border-[#334155] p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[#94A3B8] text-sm">Repository Stats</span>
+                <CubeIcon className="w-5 h-5 text-[#60A5FA]" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-[#94A3B8] text-xs">Files</span>
+                  <span className="text-white font-medium">
+                    {stats.totalFiles || countFiles(analysis.structure) || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#94A3B8] text-xs">Directories</span>
+                  <span className="text-white font-medium">
+                    {stats.totalDirs || countDirs(analysis.structure) || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#94A3B8] text-xs">Size</span>
+                  <span className="text-white font-medium">
+                    {metadata.size
+                      ? `${(metadata.size / 1024).toFixed(2)} MB`
+                      : "N/A"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#0F1320] to-[#1A1F2E] rounded-xl border border-[#334155] p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[#94A3B8] text-sm">Features</span>
+                <WrenchScrewdriverIcon className="w-5 h-5 text-[#60A5FA]" />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {basicAnalysis.hasDocker && (
+                  <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full">
+                    🐳 Docker
+                  </span>
+                )}
+                {basicAnalysis.hasCiCd && (
+                  <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">
+                    🔄 CI/CD
+                  </span>
+                )}
+                {basicAnalysis.hasTests && (
+                  <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full">
+                    🧪 Tests
+                  </span>
+                )}
+                {basicAnalysis.hasLinting && (
+                  <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full">
+                    ✨ Linting
+                  </span>
+                )}
+              </div>
+              {enhancedAnalysis.frameworks &&
+                enhancedAnalysis.frameworks.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-[#94A3B8] mb-1">Frameworks</p>
+                    <div className="flex flex-wrap gap-1">
+                      {enhancedAnalysis.frameworks.slice(0, 3).map((fw) => (
+                        <span
+                          key={fw}
+                          className="text-xs px-2 py-1 bg-[#1A1F2E] rounded-full text-white"
+                        >
+                          {fw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            <div className="bg-gradient-to-br from-[#0F1320] to-[#1A1F2E] rounded-xl border border-[#334155] p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[#94A3B8] text-sm">Activity</span>
+                <StarIcon className="w-5 h-5 text-[#60A5FA]" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-[#94A3B8] text-xs">Stars</span>
+                  <span className="text-white font-medium">
+                    {metadata.stars?.toLocaleString() || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#94A3B8] text-xs">Forks</span>
+                  <span className="text-white font-medium">
+                    {metadata.forks?.toLocaleString() || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#94A3B8] text-xs">Updated</span>
+                  <span className="text-white font-medium text-xs">
+                    {formatDate(metadata.updatedAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* File Distribution Chart - NEW */}
+          {stats.fileTypes && Object.keys(stats.fileTypes).length > 0 && (
+            <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                  <DocumentIcon className="w-5 h-5 text-[#60A5FA]" />
+                  File Distribution
+                </h3>
+                <button
+                  onClick={() => toggleSection("files")}
+                  className="text-[#94A3B8] hover:text-white transition-colors"
+                >
+                  {expandedSections.files ? (
+                    <ChevronUpIcon className="w-5 h-5" />
+                  ) : (
+                    <ChevronDownIcon className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {expandedSections.files && (
+                <div className="space-y-3">
+                  {Object.entries(stats.fileTypes)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 8)
+                    .map(([ext, count]) => {
+                      const percentage = (
+                        (count / stats.totalFiles) *
+                        100
+                      ).toFixed(1);
+                      return (
+                        <div key={ext} className="flex items-center gap-3">
+                          <span className="text-xs text-[#94A3B8] w-16">
+                            .{ext}
+                          </span>
+                          <div className="flex-1 h-2 bg-[#1A1F2E] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-[#60A5FA] to-[#818CF8] rounded-full"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-white w-12">
+                            {count} files
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -376,9 +925,11 @@ export default function HomePage() {
                     <FolderIcon className="w-5 h-5 text-[#60A5FA]" />
                     Project Structure
                   </h2>
-                  <span className="text-xs text-[#60A5FA] bg-[#60A5FA]/10 px-2 py-1 rounded-full">
-                    {analysis.structure?.length || 0} items
-                  </span>
+                  {analysis.structure && Array.isArray(analysis.structure) && (
+                    <span className="text-xs text-[#60A5FA] bg-[#60A5FA]/10 px-2 py-1 rounded-full">
+                      {analysis.structure.length} items
+                    </span>
+                  )}
                 </div>
                 <div className="max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
                   {renderStructure(structure)}
@@ -395,52 +946,63 @@ export default function HomePage() {
                     <CodeBracketIcon className="w-5 h-5 text-[#60A5FA]" />
                     Tech Stack
                   </h2>
-                  {analysis.categorizedTech && (
+                  {aiAnalysis.mainTechnologies && (
                     <span className="text-xs text-[#60A5FA] bg-[#60A5FA]/10 px-3 py-1.5 rounded-full">
-                      {Object.values(analysis.categorizedTech).flat().length}{" "}
-                      technologies
+                      {aiAnalysis.mainTechnologies.length} technologies
                     </span>
                   )}
                 </div>
 
-                {analysis.categorizedTech ? (
+                {aiAnalysis.mainTechnologies ? (
                   <div className="space-y-4">
                     {/* Show preview categories */}
-                    {previewCategories.map((category) => {
-                      const technologies = analysis.categorizedTech[category];
-                      if (!technologies || technologies.length === 0)
-                        return null;
+                    {
+                      previewCategories.map((category) => {
+                        const technologies = categorizedTech[category];
+                        if (!technologies || technologies.length === 0)
+                          return null;
 
-                      return (
-                        <div key={category} className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={`w-6 h-6 rounded-md bg-gradient-to-r ${categoryColors[category]} flex items-center justify-center text-white`}
-                            >
-                              {getCategoryIcon(category)}
-                            </div>
-                            <h3 className="text-sm font-semibold text-white">
-                              {categoryNames[category]}
-                            </h3>
-                            <span className="text-xs text-[#94A3B8]">
-                              ({technologies.length})
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-2 pl-8">
-                            {technologies.map((tech, index) => (
-                              <span
-                                key={index}
-                                className="px-2.5 py-1 bg-[#1A1F2E] text-[#94A3B8] rounded-lg text-xs font-medium border border-[#334155] hover:border-[#60A5FA] hover:text-white transition-all duration-200"
+                        return (
+                          <div key={category} className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-6 h-6 rounded-md bg-gradient-to-r ${categoryColors[category]} flex items-center justify-center text-white`}
                               >
-                                {tech}
+                                {getCategoryIcon(category)}
+                              </div>
+                              <h3 className="text-sm font-semibold text-white">
+                                {categoryNames[category]}
+                              </h3>
+                              <span className="text-xs text-[#94A3B8]">
+                                ({technologies.length})
                               </span>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+                            </div>
+                            <div className="flex flex-wrap gap-2 pl-8">
+                              {technologies.map((tech, index) => {
+                                // Ensure tech is a string, if it's an object, convert safely
+                                const displayTech =
+                                  typeof tech === "object"
+                                    ? tech.name ||
+                                      tech.purpose ||
+                                      JSON.stringify(tech)
+                                    : String(tech);
 
-                    {/* Show More button for hidden categories */}
+                                return (
+                                  <span
+                                    key={index}
+                                    className="px-2.5 py-1 bg-[#1A1F2E] text-[#94A3B8] rounded-lg text-xs font-medium border border-[#334155] hover:border-[#60A5FA] hover:text-white transition-all duration-200"
+                                  >
+                                    {displayTech}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })
+
+                      /* Show More button for hidden categories */
+                    }
                     {hiddenCategories.length > 0 && (
                       <div className="space-y-4">
                         <button
@@ -464,8 +1026,7 @@ export default function HomePage() {
 
                         {expandedCategories &&
                           hiddenCategories.map((category) => {
-                            const technologies =
-                              analysis.categorizedTech[category];
+                            const technologies = categorizedTech[category];
                             if (!technologies || technologies.length === 0)
                               return null;
 
@@ -517,198 +1078,394 @@ export default function HomePage() {
 
               {/* System Architecture */}
               <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <CubeIcon className="w-5 h-5 text-[#60A5FA]" />
-                  System Architecture
-                </h2>
-
-                {/* Project Type Badge -直接从analysis获取，因为你的后端把数据放在顶层 */}
-                <div className="mb-4 flex flex-wrap gap-2">
-                  <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
-                    {analysis?.architecture?.type || "Unknown Project Type"}
-                  </span>
-                  {analysis?.architecture?.primaryLanguage &&
-                    analysis.architecture.primaryLanguage !== "Unknown" && (
-                      <span className="px-3 py-1 bg-[#1A1F2E] text-green-400 rounded-full text-xs font-medium border border-[#334155]">
-                        🎯 {analysis.architecture.primaryLanguage}
-                      </span>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <CubeIcon className="w-5 h-5 text-[#60A5FA]" />
+                    System Architecture
+                  </h2>
+                  <button
+                    onClick={() => toggleSection("architecture")}
+                    className="text-[#94A3B8] hover:text-white transition-colors"
+                  >
+                    {expandedSections.architecture ? (
+                      <ChevronUpIcon className="w-5 h-5" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5" />
                     )}
+                  </button>
                 </div>
 
-                {/* Dependencies */}
-                {analysis?.architecture?.dependencies &&
-                  analysis.architecture.dependencies.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                        Package Management
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {analysis.architecture.dependencies.map((dep, i) => (
-                          <span
-                            key={i}
-                            className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
-                          >
-                            {dep}
+                {expandedSections.architecture && (
+                  <>
+                    {/* Project Type Badge */}
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
+                        {aiAnalysis.projectType || "Unknown Project Type"}
+                      </span>
+                      <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
+                        {aiAnalysis.architectureStyle || "Unknown Architecture"}
+                      </span>
+                      {basicAnalysis.primaryLanguage &&
+                        basicAnalysis.primaryLanguage !== "Unknown" && (
+                          <span className="px-3 py-1 bg-[#1A1F2E] text-green-400 rounded-full text-xs font-medium border border-[#334155]">
+                            🎯 {basicAnalysis.primaryLanguage}
                           </span>
-                        ))}
-                      </div>
+                        )}
                     </div>
-                  )}
 
-                {/* Architecture Layers */}
-                {analysis?.architecture?.layers &&
-                  analysis.architecture.layers.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                        Architecture Layers
-                      </h3>
-                      <div className="space-y-2">
-                        {analysis.architecture.layers.map((layer, i) => (
-                          <div
-                            key={i}
-                            className="border-l-2 border-[#60A5FA] pl-3"
-                          >
-                            <p className="text-sm text-white">{layer}</p>
+                    {/* Build Tools */}
+                    {enhancedAnalysis.buildTools &&
+                      enhancedAnalysis.buildTools.length > 0 && (
+                        <div className="mb-4">
+                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                            Build Tools
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {enhancedAnalysis.buildTools.map((tool, i) => (
+                              <span
+                                key={i}
+                                className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
+                              >
+                                🔨 {tool}
+                              </span>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                        </div>
+                      )}
 
-                {/* Entry Points - 使用从后端获取的实际entry points */}
-                {analysis?.architecture?.entryPoints &&
-                analysis.architecture.entryPoints.length > 0 ? (
-                  <div className="mb-4">
-                    <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                      Entry Points
+                    {/* Dependencies */}
+                    {basicAnalysis.totalDependencies > 0 && (
+                      <div className="mb-4">
+                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                          Package Management
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]">
+                            📦 {basicAnalysis.totalDependencies} Dependencies
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Architecture Layers */}
+                    {aiAnalysis.layers && aiAnalysis.layers.length > 0 && (
+                      <div className="mb-4">
+                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                          Architecture Layers
+                        </h3>
+                        <div className="space-y-2">
+                          {aiAnalysis.layers.map((layer, i) => {
+                            const displayLayer =
+                              typeof layer === "object"
+                                ? layer.name ||
+                                  layer.description ||
+                                  JSON.stringify(layer)
+                                : String(layer);
+
+                            return (
+                              <div
+                                key={i}
+                                className="border-l-2 border-[#60A5FA] pl-3"
+                              >
+                                <p className="text-sm text-white">
+                                  {displayLayer}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Data Flow - NEW */}
+                    {aiAnalysis.dataFlow && aiAnalysis.dataFlow.length > 0 && (
+                      <div className="mb-4">
+                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                          Data Flow
+                        </h3>
+                        <div className="space-y-2">
+                          {aiAnalysis.dataFlow.map((flow, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <ArrowPathIcon className="w-4 h-4 text-[#60A5FA] mt-0.5" />
+                              <p className="text-sm text-white">{flow}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Project Structure from AI - NEW */}
+                    {aiAnalysis.projectStructure &&
+                      aiAnalysis.projectStructure.length > 0 && (
+                        <div className="mb-4">
+                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                            Key Components
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {aiAnalysis.projectStructure.map((component, i) => (
+                              <span
+                                key={i}
+                                className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
+                              >
+                                📁 {component}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Python Files */}
+                    {analysis.structure &&
+                      findPythonFiles(analysis.structure).length > 0 && (
+                        <div className="mb-4">
+                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                            Python Files
+                          </h3>
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {findPythonFiles(analysis.structure)
+                              .slice(0, 5)
+                              .map((file, i) => (
+                                <p
+                                  key={i}
+                                  className="text-sm text-white font-mono"
+                                >
+                                  • {file}
+                                </p>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Features from Basic Analysis */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {basicAnalysis.hasDocker && (
+                        <div className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155] text-center">
+                          🐳 Docker
+                        </div>
+                      )}
+                      {basicAnalysis.hasCiCd && (
+                        <div className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155] text-center">
+                          🔄 CI/CD
+                        </div>
+                      )}
+                      {basicAnalysis.hasTests && (
+                        <div className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155] text-center">
+                          🧪 Tests
+                        </div>
+                      )}
+                      {basicAnalysis.hasLinting && (
+                        <div className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155] text-center">
+                          ✨ Linting
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Patterns */}
+                    {aiAnalysis.patternsDetected &&
+                      aiAnalysis.patternsDetected.length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                            Detected Patterns
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {aiAnalysis.patternsDetected.map((pattern, i) => {
+                              const displayPattern =
+                                typeof pattern === "object"
+                                  ? pattern.name ||
+                                    pattern.type ||
+                                    JSON.stringify(pattern)
+                                  : String(pattern);
+
+                              return (
+                                <span
+                                  key={i}
+                                  className="flex items-center gap-1 px-2 py-1 bg-[#1A1F2E] rounded-lg border border-[#334155]"
+                                >
+                                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                                  <span className="text-xs text-white">
+                                    {displayPattern}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                  </>
+                )}
+              </div>
+
+              {/* Key Features from AI - NEW */}
+              {aiAnalysis.keyFeatures && aiAnalysis.keyFeatures.length > 0 && (
+                <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                      <CubeIcon className="w-5 h-5 text-[#60A5FA]" />
+                      Key Features
                     </h3>
-                    <div className="space-y-1">
-                      {analysis.architecture.entryPoints.map((entry, i) => (
-                        <p key={i} className="text-sm text-white font-mono">
-                          • {entry}
-                        </p>
+                    <button
+                      onClick={() => toggleSection("features")}
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      {expandedSections.features ? (
+                        <ChevronUpIcon className="w-5 h-5" />
+                      ) : (
+                        <ChevronDownIcon className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                  {expandedSections.features && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {aiAnalysis.keyFeatures.map((feature, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-2 p-3 bg-[#1A1F2E] rounded-lg"
+                        >
+                          <span className="text-[#60A5FA] text-lg">•</span>
+                          <p className="text-sm text-white">{feature}</p>
+                        </div>
                       ))}
                     </div>
-                  </div>
-                ) : (
-                  // 如果没有entry points，显示从文件结构中找到的Python文件
-                  analysis?.structure && (
-                    <div className="mb-4">
-                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                        Python Files
-                      </h3>
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {findPythonFiles(analysis.structure)
-                          .slice(0, 5)
-                          .map((file, i) => (
-                            <p key={i} className="text-sm text-white font-mono">
-                              • {file}
-                            </p>
-                          ))}
-                      </div>
-                    </div>
-                  )
-                )}
+                  )}
+                </div>
+              )}
 
-                {/* Components/Directories */}
-                {analysis?.architecture?.components &&
-                  analysis.architecture.components.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                        Key Components
+              {/* Improvement Suggestions - NEW */}
+              {aiAnalysis.improvementSuggestions &&
+                aiAnalysis.improvementSuggestions.length > 0 && (
+                  <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                        <WrenchScrewdriverIcon className="w-5 h-5 text-[#60A5FA]" />
+                        Improvement Suggestions
                       </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {analysis.architecture.components.map(
-                          (component, i) => (
-                            <span
+                      <button
+                        onClick={() => toggleSection("suggestions")}
+                        className="text-[#94A3B8] hover:text-white transition-colors"
+                      >
+                        {expandedSections.suggestions ? (
+                          <ChevronUpIcon className="w-5 h-5" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                    {expandedSections.suggestions && (
+                      <div className="space-y-3">
+                        {aiAnalysis.improvementSuggestions.map(
+                          (suggestion, i) => (
+                            <div
                               key={i}
-                              className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
+                              className="flex items-start gap-3 p-3 bg-[#1A1F2E] rounded-lg border-l-4 border-[#60A5FA]"
                             >
-                              📁 {component}
-                            </span>
+                              <span className="text-[#60A5FA] mt-1">💡</span>
+                              <p className="text-sm text-white">{suggestion}</p>
+                            </div>
                           ),
                         )}
                       </div>
-                    </div>
-                  )}
-
-                {/* Data Flow */}
-                {analysis?.architecture?.dataFlow &&
-                  analysis.architecture.dataFlow.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                        Data Flow
-                      </h3>
-                      <div className="space-y-1">
-                        {analysis.architecture.dataFlow.map((flow, i) => (
-                          <p key={i} className="text-sm text-white">
-                            • {flow}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                {/* Patterns */}
-                {analysis?.architecture?.patterns &&
-                  analysis.architecture.patterns.length > 0 && (
-                    <div>
-                      <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                        Detected Patterns
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {analysis.architecture.patterns.map((pattern, i) => (
-                          <span
-                            key={i}
-                            className="flex items-center gap-1 px-2 py-1 bg-[#1A1F2E] rounded-lg border border-[#334155]"
-                          >
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                            <span className="text-xs text-white">
-                              {pattern}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-              </div>
-
-              {/* File Type Distribution */}
-              {analysis.structure && (
-                <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
-                  <h3 className="text-sm font-medium text-white mb-3">
-                    File Distribution
-                  </h3>
-                  <div className="flex flex-wrap gap-3">
-                    {(() => {
-                      const extCount = {};
-
-                      const countExtensions = (items) => {
-                        items.forEach((item) => {
-                          if (item.type === "file" && item.extension) {
-                            extCount[item.extension] =
-                              (extCount[item.extension] || 0) + 1;
-                          }
-                          if (item.children) countExtensions(item.children);
-                        });
-                      };
-
-                      countExtensions(analysis.structure);
-
-                      return Object.entries(extCount)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 6)
-                        .map(([ext, count], i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <span className="text-xs text-[#94A3B8]">
-                              .{ext}
-                            </span>
-                            <span className="text-xs text-white">{count}</span>
-                          </div>
-                        ));
-                    })()}
+                    )}
                   </div>
+                )}
+
+              {/* Recent Commits - NEW */}
+              {analysis.recentCommits && analysis.recentCommits.length > 0 && (
+                <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                      <ClockIcon className="w-5 h-5 text-[#60A5FA]" />
+                      Recent Activity
+                    </h3>
+                    <button
+                      onClick={() => toggleSection("activity")}
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      {expandedSections.activity ? (
+                        <ChevronUpIcon className="w-5 h-5" />
+                      ) : (
+                        <ChevronDownIcon className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                  {expandedSections.activity && (
+                    <div className="space-y-3">
+                      {analysis.recentCommits.map((commit, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-3 p-2 hover:bg-[#1A1F2E] rounded-lg transition"
+                        >
+                          <div className="w-2 h-2 mt-2 bg-green-500 rounded-full"></div>
+                          <div className="flex-1">
+                            <p className="text-sm text-white">
+                              {commit.message}
+                            </p>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-xs text-[#60A5FA]">
+                                {commit.author}
+                              </span>
+                              <span className="text-xs text-[#94A3B8]">
+                                {formatDate(commit.date)}
+                              </span>
+                              <span className="text-xs text-[#94A3B8]">
+                                {commit.sha}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Contributors - NEW */}
+              {analysis.contributors && analysis.contributors.length > 0 && (
+                <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
+                  <h3 className="text-sm font-medium text-white mb-4 flex items-center gap-2">
+                    <UserGroupIcon className="w-5 h-5 text-[#60A5FA]" />
+                    Top Contributors
+                  </h3>
+                  <div className="space-y-3">
+                    {analysis.contributors.slice(0, 5).map((contributor, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-2 hover:bg-[#1A1F2E] rounded-lg transition"
+                      >
+                        <div className="flex items-center gap-3">
+                          {contributor.avatar ? (
+                            <img
+                              src={contributor.avatar}
+                              alt={contributor.login}
+                              className="w-6 h-6 rounded-full"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-[#60A5FA]/20 flex items-center justify-center">
+                              <span className="text-xs text-[#60A5FA]">
+                                {contributor.login[0]?.toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          <span className="text-sm text-white">
+                            {contributor.login}
+                          </span>
+                        </div>
+                        <span className="text-xs text-[#94A3B8]">
+                          {contributor.contributions} commits
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* License Info - NEW */}
+              {metadata.license && (
+                <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
+                  <h3 className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+                    <ShieldCheckIcon className="w-5 h-5 text-[#60A5FA]" />
+                    License
+                  </h3>
+                  <p className="text-sm text-[#94A3B8]">{metadata.license}</p>
                 </div>
               )}
             </div>
