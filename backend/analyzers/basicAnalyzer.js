@@ -1,15 +1,13 @@
 // analyzers/basicAnalyzer.js
 
-/* =================================
-   BASIC (DETERMINISTIC) ANALYSIS
-================================ */
-
 const CODE_EXTENSIONS = new Set([
   "js","jsx","ts","tsx","py","rb","java","go","rs","php","cs","swift","kt","scala"
 ]);
 
-const NON_CODE_EXTENSIONS = new Set([
-  "md","txt","json","lock","env","yml","yaml"
+const CONFIG_FILES = new Set([
+  ".env", ".gitignore", "dockerfile", ".dockerignore", 
+  ".eslintrc", ".prettierrc", ".babelrc", "webpack.config.js",
+  "vite.config.js", "next.config.js", "nuxt.config.js"
 ]);
 
 /**
@@ -39,37 +37,185 @@ function countDependencies(packageJson) {
  * Detect if Docker files exist
  */
 function detectDocker(structure) {
-  return structure.some((item) =>
-    item.type === "file" && item.name.toLowerCase() === "dockerfile"
-  );
+  const searchDocker = (items) => {
+    for (const item of items) {
+      if (item.type === "file" && item.name.toLowerCase() === "dockerfile") {
+        return true;
+      }
+      if (item.children && searchDocker(item.children)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  return searchDocker(structure);
 }
 
 /**
  * Detect if CI/CD configs exist
  */
 function detectCiCd(structure) {
-  return structure.some((item) =>
-    item.type === "dir" && item.name.toLowerCase() === ".github"
-  );
+  const searchCiCd = (items) => {
+    for (const item of items) {
+      if (item.type === "dir" && 
+          (item.name.toLowerCase() === ".github" || 
+           item.name.toLowerCase() === ".gitlab" ||
+           item.name.toLowerCase() === ".circleci")) {
+        return true;
+      }
+      if (item.children && searchCiCd(item.children)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  return searchCiCd(structure);
 }
 
 /**
  * Detect if tests folder exists
  */
 function detectTesting(structure) {
-  return structure.some((item) =>
-    item.type === "dir" && /test/.test(item.name.toLowerCase())
-  );
+  const searchTests = (items) => {
+    for (const item of items) {
+      if (item.type === "dir" && 
+          (/test/.test(item.name.toLowerCase()) || 
+           /__tests__/.test(item.name.toLowerCase()) ||
+           /spec/.test(item.name.toLowerCase()))) {
+        return true;
+      }
+      if (item.children && searchTests(item.children)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  return searchTests(structure);
 }
 
 /**
  * Detect if linting config exists
  */
 function detectLinting(structure) {
-  return structure.some((item) =>
-    item.type === "file" &&
-    [".eslintrc", ".prettierrc"].includes(item.name.toLowerCase())
-  );
+  const searchLinting = (items) => {
+    for (const item of items) {
+      if (item.type === "file" && 
+          [".eslintrc", ".eslintrc.js", ".eslintrc.json", 
+           ".prettierrc", ".prettierrc.js", ".stylelintrc"]
+            .includes(item.name.toLowerCase())) {
+        return true;
+      }
+      if (item.children && searchLinting(item.children)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  return searchLinting(structure);
+}
+
+/**
+ * Detect build tools
+ */
+function detectBuildTools(structure, packageJson) {
+  const tools = [];
+  
+  // Check package.json scripts
+  if (packageJson?.scripts) {
+    const scripts = Object.keys(packageJson.scripts).join(' ').toLowerCase();
+    if (scripts.includes('webpack')) tools.push('Webpack');
+    if (scripts.includes('vite')) tools.push('Vite');
+    if (scripts.includes('rollup')) tools.push('Rollup');
+    if (scripts.includes('babel')) tools.push('Babel');
+    if (scripts.includes('tsc') || scripts.includes('typescript')) tools.push('TypeScript');
+  }
+  
+  // Check for build config files
+  const searchConfigs = (items) => {
+    for (const item of items) {
+      if (item.type === "file") {
+        const name = item.name.toLowerCase();
+        if (name === 'webpack.config.js') tools.push('Webpack');
+        if (name === 'vite.config.js') tools.push('Vite');
+        if (name === 'rollup.config.js') tools.push('Rollup');
+        if (name === 'tsconfig.json') tools.push('TypeScript');
+      }
+      if (item.children) searchConfigs(item.children);
+    }
+  };
+  searchConfigs(structure);
+  
+  return [...new Set(tools)]; // Remove duplicates
+}
+
+/**
+ * Detect framework
+ */
+function detectFramework(structure, packageJson) {
+  const frameworks = [];
+  
+  if (packageJson?.dependencies || packageJson?.devDependencies) {
+    const allDeps = {
+      ...packageJson.dependencies,
+      ...packageJson.devDependencies
+    };
+    
+    const deps = Object.keys(allDeps).join(' ').toLowerCase();
+    
+    if (deps.includes('react')) frameworks.push('React');
+    if (deps.includes('vue')) frameworks.push('Vue');
+    if (deps.includes('angular')) frameworks.push('Angular');
+    if (deps.includes('next')) frameworks.push('Next.js');
+    if (deps.includes('nuxt')) frameworks.push('Nuxt');
+    if (deps.includes('express')) frameworks.push('Express');
+    if (deps.includes('django')) frameworks.push('Django');
+    if (deps.includes('flask')) frameworks.push('Flask');
+    if (deps.includes('spring')) frameworks.push('Spring');
+    if (deps.includes('laravel')) frameworks.push('Laravel');
+  }
+  
+  return frameworks;
+}
+
+/**
+ * Run enhanced analysis
+ */
+function runEnhancedAnalysis(repoData) {
+  const { structure, packageJson, metadata } = repoData;
+  
+  return {
+    buildTools: detectBuildTools(structure, packageJson),
+    frameworks: detectFramework(structure, packageJson),
+    hasReadme: repoData.readme?.hasContent || false,
+    recentActivity: repoData.recentCommits?.length || 0,
+    contributorCount: repoData.contributors?.length || 0,
+    topics: metadata.topics || [],
+    license: metadata.license,
+    createdAt: metadata.createdAt,
+    updatedAt: metadata.updatedAt,
+    repoSize: metadata.size,
+    hasConfigFiles: detectConfigFiles(structure)
+  };
+}
+
+/**
+ * Detect config files
+ */
+function detectConfigFiles(structure) {
+  const configs = [];
+  const searchConfigs = (items) => {
+    for (const item of items) {
+      if (item.type === "file") {
+        const name = item.name.toLowerCase();
+        if (CONFIG_FILES.has(name)) {
+          configs.push(item.name);
+        }
+      }
+      if (item.children) searchConfigs(item.children);
+    }
+  };
+  searchConfigs(structure);
+  return configs;
 }
 
 function runBasicAnalysis(structure, languages, packageJson) {
@@ -83,4 +229,7 @@ function runBasicAnalysis(structure, languages, packageJson) {
   };
 }
 
-module.exports = { runBasicAnalysis };
+module.exports = { 
+  runBasicAnalysis, 
+  runEnhancedAnalysis 
+};
