@@ -29,6 +29,17 @@ import {
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 
+// Helper function to safely render any data as string
+const safeRender = (data) => {
+  if (typeof data === 'string') return data;
+  if (typeof data === 'number' || typeof data === 'boolean') return String(data);
+  if (typeof data === 'object' && data !== null) {
+    // Try to extract common text fields
+    return data.description || data.name || data.category || data.suggestion || data.message || data.title || JSON.stringify(data);
+  }
+  return '';
+};
+
 export default function HomePage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -83,6 +94,14 @@ export default function HomePage() {
     console.log("Full analysis data:", analysis);
     console.log("AI Analysis:", aiAnalysis);
     console.log("Enhanced Analysis:", enhancedAnalysis);
+    
+    // Debug object data
+    if (aiAnalysis.keyFeatures) {
+      console.log("Key Features:", aiAnalysis.keyFeatures);
+    }
+    if (aiAnalysis.layers) {
+      console.log("Layers:", aiAnalysis.layers);
+    }
   }, [analysis]);
 
   const toggleFolder = (path) => {
@@ -98,25 +117,6 @@ export default function HomePage() {
       [section]: !prev[section],
     }));
   };
-
-  useEffect(() => {
-    if (aiAnalysis.mainTechnologies) {
-      console.log("Main Technologies raw data:", aiAnalysis.mainTechnologies);
-      aiAnalysis.mainTechnologies.forEach((tech, index) => {
-        if (typeof tech === "object") {
-          console.log(`Tech at index ${index} is an object:`, tech);
-        }
-      });
-    }
-
-    if (aiAnalysis.layers) {
-      console.log("Layers raw data:", aiAnalysis.layers);
-    }
-
-    if (aiAnalysis.patternsDetected) {
-      console.log("Patterns raw data:", aiAnalysis.patternsDetected);
-    }
-  }, [aiAnalysis]);
 
   // Get appropriate icon based on file extension
   const getFileIcon = (filename) => {
@@ -166,15 +166,14 @@ export default function HomePage() {
 
     // Sort items: directories first, then files alphabetically
     const sortedItems = [...items].sort((a, b) => {
-      if (a.type === "dir" && b.type === "file") return -1;
-      if (a.type === "file" && b.type === "dir") return 1;
+      if (a.type === 'dir' && b.type === 'file') return -1;
+      if (a.type === 'file' && b.type === 'dir') return 1;
       return a.name.localeCompare(b.name);
     });
 
     // Calculate stats for display
-    const totalItems = items.length;
-    const dirCount = items.filter((item) => item.type === "dir").length;
-    const fileCount = items.filter((item) => item.type === "file").length;
+    const dirCount = items.filter(item => item.type === 'dir').length;
+    const fileCount = items.filter(item => item.type === 'file').length;
 
     return (
       <>
@@ -185,7 +184,7 @@ export default function HomePage() {
             <span>📄 {fileCount} files</span>
           </div>
         )}
-
+        
         {sortedItems.map((item) => {
           const currentPath = `${path}/${item.name}`;
           const isExpanded = expandedFolders[currentPath];
@@ -194,8 +193,7 @@ export default function HomePage() {
           if (item.type === "dir") {
             // Count items in directory for badge
             const childCount = item.children?.length || 0;
-            const childDirs =
-              item.children?.filter((c) => c.type === "dir").length || 0;
+            const childDirs = item.children?.filter(c => c.type === 'dir').length || 0;
             const childFiles = childCount - childDirs;
 
             return (
@@ -218,16 +216,15 @@ export default function HomePage() {
                   <span className="text-gray-300 text-sm font-medium group-hover:text-white transition-colors">
                     {item.name}
                   </span>
-
+                  
                   {/* Directory stats badge */}
                   {childCount > 0 && (
                     <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[#334155] text-[#94A3B8] group-hover:bg-[#60A5FA] group-hover:text-white transition-colors">
-                      {childDirs > 0 && `${childDirs}📁 `}
-                      {childFiles > 0 && `${childFiles}📄`}
+                      {childDirs > 0 && `${childDirs}📁 `}{childFiles > 0 && `${childFiles}📄`}
                     </span>
                   )}
                 </div>
-
+                
                 {isExpanded && item.children && (
                   <div className="border-l border-[#334155] ml-6 pl-2">
                     {renderStructure(item.children, level + 1, currentPath)}
@@ -239,46 +236,33 @@ export default function HomePage() {
 
           // File item
           const fileSize = item.size ? (item.size / 1024).toFixed(1) : null;
-          const fileExtension =
-            item.extension || item.name.split(".").pop() || "";
+          const fileExtension = item.extension || item.name.split('.').pop() || '';
 
           return (
             <div
               key={currentPath}
               className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 transition-all duration-200 group"
               style={{ marginLeft: `${indent + 24}px` }}
-              title={`${item.name}${fileSize ? ` (${fileSize}KB)` : ""}`}
+              title={`${item.name}${fileSize ? ` (${fileSize}KB)` : ''}`}
             >
               {getFileIcon(item.name)}
               <span className="text-gray-400 text-sm group-hover:text-white transition-colors truncate flex-1">
                 {item.name}
               </span>
-
+              
               {/* File size badge */}
               {fileSize && (
                 <span className="text-xs text-[#64748B] group-hover:text-[#94A3B8] ml-2">
                   {fileSize}KB
                 </span>
               )}
-
+              
               {/* Extension badge for code files */}
-              {fileExtension &&
-                [
-                  "js",
-                  "jsx",
-                  "ts",
-                  "tsx",
-                  "py",
-                  "java",
-                  "go",
-                  "rs",
-                  "css",
-                  "html",
-                ].includes(fileExtension) && (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-[#334155] text-[#94A3B8] group-hover:bg-[#60A5FA] group-hover:text-white transition-colors">
-                    {fileExtension}
-                  </span>
-                )}
+              {fileExtension && ['js', 'jsx', 'ts', 'tsx', 'py', 'java', 'go', 'rs', 'css', 'html'].includes(fileExtension) && (
+                <span className="text-xs px-1.5 py-0.5 rounded bg-[#334155] text-[#94A3B8] group-hover:bg-[#60A5FA] group-hover:text-white transition-colors">
+                  {fileExtension}
+                </span>
+              )}
             </div>
           );
         })}
@@ -354,21 +338,21 @@ export default function HomePage() {
     other: "from-gray-500 to-slate-500",
   };
 
-  // Create categorizedTech from aiAnalysis.mainTechnologies
+  // Safely process technologies
   const safeTechnologies = (aiAnalysis.mainTechnologies || [])
-    .map((tech) => {
-      if (typeof tech === "string") return tech;
-      if (typeof tech === "object") {
-        // If it's an object with name or purpose, use that
-        return tech.name || tech.purpose || JSON.stringify(tech);
+    .map(tech => {
+      if (typeof tech === 'string') return tech;
+      if (typeof tech === 'object' && tech !== null) {
+        return tech.name || tech.description || tech.category || JSON.stringify(tech);
       }
       return String(tech);
     })
-    .filter(Boolean); // Remove any null/undefined
+    .filter(Boolean);
 
+  // Create categorizedTech from aiAnalysis.mainTechnologies
   const categorizedTech = {
     languages:
-      aiAnalysis.mainTechnologies?.filter((tech) =>
+      safeTechnologies.filter((tech) =>
         [
           "JavaScript",
           "TypeScript",
@@ -385,7 +369,7 @@ export default function HomePage() {
         ].includes(tech),
       ) || [],
     frontend:
-      aiAnalysis.mainTechnologies?.filter((tech) =>
+      safeTechnologies.filter((tech) =>
         [
           "React",
           "Vue",
@@ -400,7 +384,7 @@ export default function HomePage() {
         ].includes(tech),
       ) || [],
     backend:
-      aiAnalysis.mainTechnologies?.filter((tech) =>
+      safeTechnologies.filter((tech) =>
         [
           "Node.js",
           "Express",
@@ -414,7 +398,7 @@ export default function HomePage() {
         ].includes(tech),
       ) || [],
     database:
-      aiAnalysis.mainTechnologies?.filter((tech) =>
+      safeTechnologies.filter((tech) =>
         [
           "MongoDB",
           "PostgreSQL",
@@ -427,7 +411,7 @@ export default function HomePage() {
         ].includes(tech),
       ) || [],
     ai_ml:
-      aiAnalysis.mainTechnologies?.filter((tech) =>
+      safeTechnologies.filter((tech) =>
         [
           "TensorFlow",
           "PyTorch",
@@ -440,7 +424,7 @@ export default function HomePage() {
         ].includes(tech),
       ) || [],
     devTools:
-      aiAnalysis.mainTechnologies?.filter((tech) =>
+      safeTechnologies.filter((tech) =>
         [
           "Docker",
           "Kubernetes",
@@ -453,19 +437,19 @@ export default function HomePage() {
         ].includes(tech),
       ) || [],
     cloud:
-      aiAnalysis.mainTechnologies?.filter((tech) =>
+      safeTechnologies.filter((tech) =>
         ["AWS", "Azure", "GCP", "Vercel", "Netlify", "Cloudflare"].includes(
           tech,
         ),
       ) || [],
     testing:
-      aiAnalysis.mainTechnologies?.filter((tech) =>
+      safeTechnologies.filter((tech) =>
         ["Jest", "Mocha", "Cypress", "Playwright", "Pytest", "JUnit"].includes(
           tech,
         ),
       ) || [],
     mobile:
-      aiAnalysis.mainTechnologies?.filter((tech) =>
+      safeTechnologies.filter((tech) =>
         [
           "React Native",
           "Flutter",
@@ -475,7 +459,7 @@ export default function HomePage() {
         ].includes(tech),
       ) || [],
     other:
-      aiAnalysis.mainTechnologies?.filter(
+      safeTechnologies.filter(
         (tech) =>
           ![
             "JavaScript",
@@ -738,7 +722,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Enhanced Metrics Grid - NEW */}
+          {/* Enhanced Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-gradient-to-br from-[#0F1320] to-[#1A1F2E] rounded-xl border border-[#334155] p-4">
               <div className="flex items-center justify-between mb-2">
@@ -864,7 +848,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* File Distribution Chart - NEW */}
+          {/* File Distribution Chart */}
           {stats.fileTypes && Object.keys(stats.fileTypes).length > 0 && (
             <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
@@ -956,53 +940,41 @@ export default function HomePage() {
                 {aiAnalysis.mainTechnologies ? (
                   <div className="space-y-4">
                     {/* Show preview categories */}
-                    {
-                      previewCategories.map((category) => {
-                        const technologies = categorizedTech[category];
-                        if (!technologies || technologies.length === 0)
-                          return null;
+                    {previewCategories.map((category) => {
+                      const technologies = categorizedTech[category];
+                      if (!technologies || technologies.length === 0)
+                        return null;
 
-                        return (
-                          <div key={category} className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-6 h-6 rounded-md bg-gradient-to-r ${categoryColors[category]} flex items-center justify-center text-white`}
-                              >
-                                {getCategoryIcon(category)}
-                              </div>
-                              <h3 className="text-sm font-semibold text-white">
-                                {categoryNames[category]}
-                              </h3>
-                              <span className="text-xs text-[#94A3B8]">
-                                ({technologies.length})
-                              </span>
+                      return (
+                        <div key={category} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`w-6 h-6 rounded-md bg-gradient-to-r ${categoryColors[category]} flex items-center justify-center text-white`}
+                            >
+                              {getCategoryIcon(category)}
                             </div>
-                            <div className="flex flex-wrap gap-2 pl-8">
-                              {technologies.map((tech, index) => {
-                                // Ensure tech is a string, if it's an object, convert safely
-                                const displayTech =
-                                  typeof tech === "object"
-                                    ? tech.name ||
-                                      tech.purpose ||
-                                      JSON.stringify(tech)
-                                    : String(tech);
-
-                                return (
-                                  <span
-                                    key={index}
-                                    className="px-2.5 py-1 bg-[#1A1F2E] text-[#94A3B8] rounded-lg text-xs font-medium border border-[#334155] hover:border-[#60A5FA] hover:text-white transition-all duration-200"
-                                  >
-                                    {displayTech}
-                                  </span>
-                                );
-                              })}
-                            </div>
+                            <h3 className="text-sm font-semibold text-white">
+                              {categoryNames[category]}
+                            </h3>
+                            <span className="text-xs text-[#94A3B8]">
+                              ({technologies.length})
+                            </span>
                           </div>
-                        );
-                      })
+                          <div className="flex flex-wrap gap-2 pl-8">
+                            {technologies.map((tech, index) => (
+                              <span
+                                key={index}
+                                className="px-2.5 py-1 bg-[#1A1F2E] text-[#94A3B8] rounded-lg text-xs font-medium border border-[#334155] hover:border-[#60A5FA] hover:text-white transition-all duration-200"
+                              >
+                                {tech}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
 
-                      /* Show More button for hidden categories */
-                    }
+                    {/* Show More button for hidden categories */}
                     {hiddenCategories.length > 0 && (
                       <div className="space-y-4">
                         <button
@@ -1100,10 +1072,10 @@ export default function HomePage() {
                     {/* Project Type Badge */}
                     <div className="mb-4 flex flex-wrap gap-2">
                       <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
-                        {aiAnalysis.projectType || "Unknown Project Type"}
+                        {safeRender(aiAnalysis.projectType) || "Unknown Project Type"}
                       </span>
                       <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
-                        {aiAnalysis.architectureStyle || "Unknown Architecture"}
+                        {safeRender(aiAnalysis.architectureStyle) || "Unknown Architecture"}
                       </span>
                       {basicAnalysis.primaryLanguage &&
                         basicAnalysis.primaryLanguage !== "Unknown" && (
@@ -1126,7 +1098,7 @@ export default function HomePage() {
                                 key={i}
                                 className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
                               >
-                                🔨 {tool}
+                                🔨 {safeRender(tool)}
                               </span>
                             ))}
                           </div>
@@ -1154,30 +1126,19 @@ export default function HomePage() {
                           Architecture Layers
                         </h3>
                         <div className="space-y-2">
-                          {aiAnalysis.layers.map((layer, i) => {
-                            const displayLayer =
-                              typeof layer === "object"
-                                ? layer.name ||
-                                  layer.description ||
-                                  JSON.stringify(layer)
-                                : String(layer);
-
-                            return (
-                              <div
-                                key={i}
-                                className="border-l-2 border-[#60A5FA] pl-3"
-                              >
-                                <p className="text-sm text-white">
-                                  {displayLayer}
-                                </p>
-                              </div>
-                            );
-                          })}
+                          {aiAnalysis.layers.map((layer, i) => (
+                            <div
+                              key={i}
+                              className="border-l-2 border-[#60A5FA] pl-3"
+                            >
+                              <p className="text-sm text-white">{safeRender(layer)}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Data Flow - NEW */}
+                    {/* Data Flow */}
                     {aiAnalysis.dataFlow && aiAnalysis.dataFlow.length > 0 && (
                       <div className="mb-4">
                         <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
@@ -1187,14 +1148,14 @@ export default function HomePage() {
                           {aiAnalysis.dataFlow.map((flow, i) => (
                             <div key={i} className="flex items-start gap-2">
                               <ArrowPathIcon className="w-4 h-4 text-[#60A5FA] mt-0.5" />
-                              <p className="text-sm text-white">{flow}</p>
+                              <p className="text-sm text-white">{safeRender(flow)}</p>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Project Structure from AI - NEW */}
+                    {/* Project Structure from AI */}
                     {aiAnalysis.projectStructure &&
                       aiAnalysis.projectStructure.length > 0 && (
                         <div className="mb-4">
@@ -1207,7 +1168,7 @@ export default function HomePage() {
                                 key={i}
                                 className="px-2 py-1 bg-[#1A1F2E] rounded-lg text-xs text-[#94A3B8] border border-[#334155]"
                               >
-                                📁 {component}
+                                📁 {safeRender(component)}
                               </span>
                             ))}
                           </div>
@@ -1268,26 +1229,17 @@ export default function HomePage() {
                             Detected Patterns
                           </h3>
                           <div className="flex flex-wrap gap-2">
-                            {aiAnalysis.patternsDetected.map((pattern, i) => {
-                              const displayPattern =
-                                typeof pattern === "object"
-                                  ? pattern.name ||
-                                    pattern.type ||
-                                    JSON.stringify(pattern)
-                                  : String(pattern);
-
-                              return (
-                                <span
-                                  key={i}
-                                  className="flex items-center gap-1 px-2 py-1 bg-[#1A1F2E] rounded-lg border border-[#334155]"
-                                >
-                                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                                  <span className="text-xs text-white">
-                                    {displayPattern}
-                                  </span>
+                            {aiAnalysis.patternsDetected.map((pattern, i) => (
+                              <span
+                                key={i}
+                                className="flex items-center gap-1 px-2 py-1 bg-[#1A1F2E] rounded-lg border border-[#334155]"
+                              >
+                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                                <span className="text-xs text-white">
+                                  {safeRender(pattern)}
                                 </span>
-                              );
-                            })}
+                              </span>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -1295,7 +1247,7 @@ export default function HomePage() {
                 )}
               </div>
 
-              {/* Key Features from AI - NEW */}
+              {/* Key Features from AI */}
               {aiAnalysis.keyFeatures && aiAnalysis.keyFeatures.length > 0 && (
                 <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -1322,7 +1274,7 @@ export default function HomePage() {
                           className="flex items-start gap-2 p-3 bg-[#1A1F2E] rounded-lg"
                         >
                           <span className="text-[#60A5FA] text-lg">•</span>
-                          <p className="text-sm text-white">{feature}</p>
+                          <p className="text-sm text-white">{safeRender(feature)}</p>
                         </div>
                       ))}
                     </div>
@@ -1330,7 +1282,7 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Improvement Suggestions - NEW */}
+              {/* Improvement Suggestions */}
               {aiAnalysis.improvementSuggestions &&
                 aiAnalysis.improvementSuggestions.length > 0 && (
                   <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
@@ -1359,7 +1311,7 @@ export default function HomePage() {
                               className="flex items-start gap-3 p-3 bg-[#1A1F2E] rounded-lg border-l-4 border-[#60A5FA]"
                             >
                               <span className="text-[#60A5FA] mt-1">💡</span>
-                              <p className="text-sm text-white">{suggestion}</p>
+                              <p className="text-sm text-white">{safeRender(suggestion)}</p>
                             </div>
                           ),
                         )}
@@ -1368,7 +1320,7 @@ export default function HomePage() {
                   </div>
                 )}
 
-              {/* Recent Commits - NEW */}
+              {/* Recent Commits */}
               {analysis.recentCommits && analysis.recentCommits.length > 0 && (
                 <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -1418,7 +1370,7 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Contributors - NEW */}
+              {/* Contributors */}
               {analysis.contributors && analysis.contributors.length > 0 && (
                 <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
                   <h3 className="text-sm font-medium text-white mb-4 flex items-center gap-2">
@@ -1458,7 +1410,7 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* License Info - NEW */}
+              {/* License Info */}
               {metadata.license && (
                 <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
                   <h3 className="text-sm font-medium text-white mb-2 flex items-center gap-2">
