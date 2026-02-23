@@ -2,6 +2,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
+import RepositoryDocumentation from './RepositoryDocumentation'; 
 import {
   FolderIcon,
   DocumentIcon,
@@ -27,6 +28,7 @@ import {
   UserGroupIcon,
   ShieldCheckIcon,
   ArrowPathIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 
 // Helper function to safely render any data as string
@@ -35,10 +37,19 @@ const safeRender = (data) => {
   if (typeof data === 'number' || typeof data === 'boolean') return String(data);
   if (typeof data === 'object' && data !== null) {
     // Try to extract common text fields
-    return data.description || data.name || data.category || data.suggestion || data.message || data.title || JSON.stringify(data);
+    return (
+      data.description ||
+      data.name ||
+      data.category ||
+      data.suggestion ||
+      data.message ||
+      data.title ||
+      JSON.stringify(data)
+    );
   }
   return '';
 };
+
 
 export default function HomePage() {
   const location = useLocation();
@@ -51,7 +62,7 @@ export default function HomePage() {
   const enhancedAnalysis = analysis?.enhancedAnalysis || {};
   const aiAnalysis = analysis?.aiAnalysis || {};
   const stats = analysis?.stats || {};
-
+  const [showDocumentation, setShowDocumentation] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState({});
   const [structure, setStructure] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState(false);
@@ -94,7 +105,7 @@ export default function HomePage() {
     console.log("Full analysis data:", analysis);
     console.log("AI Analysis:", aiAnalysis);
     console.log("Enhanced Analysis:", enhancedAnalysis);
-    
+
     // Debug object data
     if (aiAnalysis.keyFeatures) {
       console.log("Key Features:", aiAnalysis.keyFeatures);
@@ -166,15 +177,15 @@ export default function HomePage() {
 
     // Sort items: directories first, then files alphabetically
     const sortedItems = [...items].sort((a, b) => {
-      if (a.type === 'dir' && b.type === 'file') return -1;
-      if (a.type === 'file' && b.type === 'dir') return 1;
+      if (a.type === "dir" && b.type === "file") return -1;
+      if (a.type === "file" && b.type === "dir") return 1;
       return a.name.localeCompare(b.name);
     });
 
     // Calculate stats for display
-    const dirCount = items.filter(item => item.type === 'dir').length;
-    const fileCount = items.filter(item => item.type === 'file').length;
-
+    const dirCount = items.filter((item) => item.type === "dir").length;
+    const fileCount = items.filter((item) => item.type === "file").length;
+    
     return (
       <>
         {/* Show stats at root level only */}
@@ -184,7 +195,7 @@ export default function HomePage() {
             <span>📄 {fileCount} files</span>
           </div>
         )}
-        
+
         {sortedItems.map((item) => {
           const currentPath = `${path}/${item.name}`;
           const isExpanded = expandedFolders[currentPath];
@@ -193,7 +204,8 @@ export default function HomePage() {
           if (item.type === "dir") {
             // Count items in directory for badge
             const childCount = item.children?.length || 0;
-            const childDirs = item.children?.filter(c => c.type === 'dir').length || 0;
+            const childDirs =
+              item.children?.filter((c) => c.type === "dir").length || 0;
             const childFiles = childCount - childDirs;
 
             return (
@@ -216,15 +228,16 @@ export default function HomePage() {
                   <span className="text-gray-300 text-sm font-medium group-hover:text-white transition-colors">
                     {item.name}
                   </span>
-                  
+
                   {/* Directory stats badge */}
                   {childCount > 0 && (
                     <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[#334155] text-[#94A3B8] group-hover:bg-[#60A5FA] group-hover:text-white transition-colors">
-                      {childDirs > 0 && `${childDirs}📁 `}{childFiles > 0 && `${childFiles}📄`}
+                      {childDirs > 0 && `${childDirs}📁 `}
+                      {childFiles > 0 && `${childFiles}📄`}
                     </span>
                   )}
                 </div>
-                
+
                 {isExpanded && item.children && (
                   <div className="border-l border-[#334155] ml-6 pl-2">
                     {renderStructure(item.children, level + 1, currentPath)}
@@ -236,33 +249,46 @@ export default function HomePage() {
 
           // File item
           const fileSize = item.size ? (item.size / 1024).toFixed(1) : null;
-          const fileExtension = item.extension || item.name.split('.').pop() || '';
+          const fileExtension =
+            item.extension || item.name.split(".").pop() || "";
 
           return (
             <div
               key={currentPath}
               className="flex items-center gap-2 py-1.5 hover:bg-[#1A1F2E] rounded-lg px-3 transition-all duration-200 group"
               style={{ marginLeft: `${indent + 24}px` }}
-              title={`${item.name}${fileSize ? ` (${fileSize}KB)` : ''}`}
+              title={`${item.name}${fileSize ? ` (${fileSize}KB)` : ""}`}
             >
               {getFileIcon(item.name)}
               <span className="text-gray-400 text-sm group-hover:text-white transition-colors truncate flex-1">
                 {item.name}
               </span>
-              
+
               {/* File size badge */}
               {fileSize && (
                 <span className="text-xs text-[#64748B] group-hover:text-[#94A3B8] ml-2">
                   {fileSize}KB
                 </span>
               )}
-              
+
               {/* Extension badge for code files */}
-              {fileExtension && ['js', 'jsx', 'ts', 'tsx', 'py', 'java', 'go', 'rs', 'css', 'html'].includes(fileExtension) && (
-                <span className="text-xs px-1.5 py-0.5 rounded bg-[#334155] text-[#94A3B8] group-hover:bg-[#60A5FA] group-hover:text-white transition-colors">
-                  {fileExtension}
-                </span>
-              )}
+              {fileExtension &&
+                [
+                  "js",
+                  "jsx",
+                  "ts",
+                  "tsx",
+                  "py",
+                  "java",
+                  "go",
+                  "rs",
+                  "css",
+                  "html",
+                ].includes(fileExtension) && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-[#334155] text-[#94A3B8] group-hover:bg-[#60A5FA] group-hover:text-white transition-colors">
+                    {fileExtension}
+                  </span>
+                )}
             </div>
           );
         })}
@@ -340,10 +366,12 @@ export default function HomePage() {
 
   // Safely process technologies
   const safeTechnologies = (aiAnalysis.mainTechnologies || [])
-    .map(tech => {
-      if (typeof tech === 'string') return tech;
-      if (typeof tech === 'object' && tech !== null) {
-        return tech.name || tech.description || tech.category || JSON.stringify(tech);
+    .map((tech) => {
+      if (typeof tech === "string") return tech;
+      if (typeof tech === "object" && tech !== null) {
+        return (
+          tech.name || tech.description || tech.category || JSON.stringify(tech)
+        );
       }
       return String(tech);
     })
@@ -630,6 +658,14 @@ export default function HomePage() {
             >
               <PlusCircleIcon className="w-6 h-6" />
               New Analysis
+            </button>
+            {/* Add this button next to the New Analysis button */}
+            <button
+              onClick={() => setShowDocumentation(true)}
+              className="text-sm text-white hover:text-white transition px-4 py-2 rounded-lg bg-[#334155] hover:bg-[#475569] flex items-center gap-2"
+            >
+              <DocumentTextIcon className="w-5 h-5" />
+              Full Documentation
             </button>
           </div>
         </nav>
@@ -1072,10 +1108,12 @@ export default function HomePage() {
                     {/* Project Type Badge */}
                     <div className="mb-4 flex flex-wrap gap-2">
                       <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
-                        {safeRender(aiAnalysis.projectType) || "Unknown Project Type"}
+                        {safeRender(aiAnalysis.projectType) ||
+                          "Unknown Project Type"}
                       </span>
                       <span className="px-3 py-1 bg-[#1A1F2E] text-[#60A5FA] rounded-full text-xs font-medium border border-[#334155]">
-                        {safeRender(aiAnalysis.architectureStyle) || "Unknown Architecture"}
+                        {safeRender(aiAnalysis.architectureStyle) ||
+                          "Unknown Architecture"}
                       </span>
                       {basicAnalysis.primaryLanguage &&
                         basicAnalysis.primaryLanguage !== "Unknown" && (
@@ -1131,7 +1169,9 @@ export default function HomePage() {
                               key={i}
                               className="border-l-2 border-[#60A5FA] pl-3"
                             >
-                              <p className="text-sm text-white">{safeRender(layer)}</p>
+                              <p className="text-sm text-white">
+                                {safeRender(layer)}
+                              </p>
                             </div>
                           ))}
                         </div>
@@ -1148,7 +1188,9 @@ export default function HomePage() {
                           {aiAnalysis.dataFlow.map((flow, i) => (
                             <div key={i} className="flex items-start gap-2">
                               <ArrowPathIcon className="w-4 h-4 text-[#60A5FA] mt-0.5" />
-                              <p className="text-sm text-white">{safeRender(flow)}</p>
+                              <p className="text-sm text-white">
+                                {safeRender(flow)}
+                              </p>
                             </div>
                           ))}
                         </div>
@@ -1274,7 +1316,9 @@ export default function HomePage() {
                           className="flex items-start gap-2 p-3 bg-[#1A1F2E] rounded-lg"
                         >
                           <span className="text-[#60A5FA] text-lg">•</span>
-                          <p className="text-sm text-white">{safeRender(feature)}</p>
+                          <p className="text-sm text-white">
+                            {safeRender(feature)}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -1311,7 +1355,9 @@ export default function HomePage() {
                               className="flex items-start gap-3 p-3 bg-[#1A1F2E] rounded-lg border-l-4 border-[#60A5FA]"
                             >
                               <span className="text-[#60A5FA] mt-1">💡</span>
-                              <p className="text-sm text-white">{safeRender(suggestion)}</p>
+                              <p className="text-sm text-white">
+                                {safeRender(suggestion)}
+                              </p>
                             </div>
                           ),
                         )}
@@ -1441,6 +1487,13 @@ export default function HomePage() {
           background: #3B82F6;
         }
       `}</style>
+      {/* Documentation Modal - ADD THIS HERE */}
+      {showDocumentation && (
+        <RepositoryDocumentation 
+          analysis={analysis} 
+          onClose={() => setShowDocumentation(false)} 
+        />
+      )}
     </div>
   );
 }
