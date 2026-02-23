@@ -80,12 +80,6 @@ npm run build
 npm run build:client
 ```
 
-## Color Palette
-
-- Primary: `#6F2DBD` (Purple)
-- Secondary: `#A663CC` (Light Purple)
-- Dark: `#171123` (Dark Purple/Black)
-- Light: `#FBFBFB` (Almost White)
 
 ## Tech Stack
 
@@ -97,7 +91,3 @@ npm run build:client
 
 ### Backend
 - Node.js (ready for Express, Fastify, or your preferred framework)
-
-## License
-
-ISC
