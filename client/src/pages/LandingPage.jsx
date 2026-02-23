@@ -44,7 +44,7 @@ export default function LandingPage() {
               How it Works
             </a>
             <a
-              href="https://github.com"
+              href="https://github.com/Ayushsharma1908/gitbuddy/tree/main"
               className="text-[#94A3B8] hover:text-white transition text-sm font-medium"
             >
               GitHub
