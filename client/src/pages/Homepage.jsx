@@ -2,7 +2,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
-import RepositoryDocumentation from './RepositoryDocumentation'; 
+import RepositoryDocumentation from "./RepositoryDocumentation";
 import {
   FolderIcon,
   DocumentIcon,
@@ -33,9 +33,10 @@ import {
 
 // Helper function to safely render any data as string
 const safeRender = (data) => {
-  if (typeof data === 'string') return data;
-  if (typeof data === 'number' || typeof data === 'boolean') return String(data);
-  if (typeof data === 'object' && data !== null) {
+  if (typeof data === "string") return data;
+  if (typeof data === "number" || typeof data === "boolean")
+    return String(data);
+  if (typeof data === "object" && data !== null) {
     // Try to extract common text fields
     return (
       data.description ||
@@ -47,9 +48,8 @@ const safeRender = (data) => {
       JSON.stringify(data)
     );
   }
-  return '';
+  return "";
 };
-
 
 export default function HomePage() {
   const location = useLocation();
@@ -114,6 +114,18 @@ export default function HomePage() {
       console.log("Layers:", aiAnalysis.layers);
     }
   }, [analysis]);
+  
+  useEffect(() => {
+  console.log("🔍 AI Analysis Structure:", {
+    dataFlow: aiAnalysis.dataFlow,
+    isArray: Array.isArray(aiAnalysis.dataFlow),
+    type: typeof aiAnalysis.dataFlow,
+    layers: aiAnalysis.layers,
+    patterns: aiAnalysis.patternsDetected,
+    features: aiAnalysis.keyFeatures,
+    suggestions: aiAnalysis.improvementSuggestions
+  });
+}, [aiAnalysis]);
 
   const toggleFolder = (path) => {
     setExpandedFolders((prev) => ({
@@ -185,7 +197,7 @@ export default function HomePage() {
     // Calculate stats for display
     const dirCount = items.filter((item) => item.type === "dir").length;
     const fileCount = items.filter((item) => item.type === "file").length;
-    
+
     return (
       <>
         {/* Show stats at root level only */}
@@ -1158,47 +1170,52 @@ export default function HomePage() {
                     )}
 
                     {/* Architecture Layers */}
-                    {aiAnalysis.layers && aiAnalysis.layers.length > 0 && (
-                      <div className="mb-4">
-                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                          Architecture Layers
-                        </h3>
-                        <div className="space-y-2">
-                          {aiAnalysis.layers.map((layer, i) => (
-                            <div
-                              key={i}
-                              className="border-l-2 border-[#60A5FA] pl-3"
-                            >
-                              <p className="text-sm text-white">
-                                {safeRender(layer)}
-                              </p>
-                            </div>
-                          ))}
+                    {aiAnalysis.layers &&
+                      Array.isArray(aiAnalysis.layers) &&
+                      aiAnalysis.layers.length > 0 && (
+                        <div className="mb-4">
+                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                            Architecture Layers
+                          </h3>
+                          <div className="space-y-2">
+                            {aiAnalysis.layers.map((layer, i) => (
+                              <div
+                                key={i}
+                                className="border-l-2 border-[#60A5FA] pl-3"
+                              >
+                                <p className="text-sm text-white">
+                                  {safeRender(layer)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Data Flow */}
-                    {aiAnalysis.dataFlow && aiAnalysis.dataFlow.length > 0 && (
-                      <div className="mb-4">
-                        <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
-                          Data Flow
-                        </h3>
-                        <div className="space-y-2">
-                          {aiAnalysis.dataFlow.map((flow, i) => (
-                            <div key={i} className="flex items-start gap-2">
-                              <ArrowPathIcon className="w-4 h-4 text-[#60A5FA] mt-0.5" />
-                              <p className="text-sm text-white">
-                                {safeRender(flow)}
-                              </p>
-                            </div>
-                          ))}
+                    {aiAnalysis.dataFlow &&
+                      Array.isArray(aiAnalysis.dataFlow) &&
+                      aiAnalysis.dataFlow.length > 0 && (
+                        <div className="mb-4">
+                          <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
+                            Data Flow
+                          </h3>
+                          <div className="space-y-2">
+                            {aiAnalysis.dataFlow.map((flow, i) => (
+                              <div key={i} className="flex items-start gap-2">
+                                <ArrowPathIcon className="w-4 h-4 text-[#60A5FA] mt-0.5" />
+                                <p className="text-sm text-white">
+                                  {safeRender(flow)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Project Structure from AI */}
                     {aiAnalysis.projectStructure &&
+                      Array.isArray(aiAnalysis.projectStructure) &&
                       aiAnalysis.projectStructure.length > 0 && (
                         <div className="mb-4">
                           <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
@@ -1265,6 +1282,7 @@ export default function HomePage() {
 
                     {/* Patterns */}
                     {aiAnalysis.patternsDetected &&
+                      Array.isArray(aiAnalysis.patternsDetected) &&
                       aiAnalysis.patternsDetected.length > 0 && (
                         <div>
                           <h3 className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider mb-2">
@@ -1290,44 +1308,47 @@ export default function HomePage() {
               </div>
 
               {/* Key Features from AI */}
-              {aiAnalysis.keyFeatures && aiAnalysis.keyFeatures.length > 0 && (
-                <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-white flex items-center gap-2">
-                      <CubeIcon className="w-5 h-5 text-[#60A5FA]" />
-                      Key Features
-                    </h3>
-                    <button
-                      onClick={() => toggleSection("features")}
-                      className="text-[#94A3B8] hover:text-white transition-colors"
-                    >
-                      {expandedSections.features ? (
-                        <ChevronUpIcon className="w-5 h-5" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
-                  {expandedSections.features && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {aiAnalysis.keyFeatures.map((feature, i) => (
-                        <div
-                          key={i}
-                          className="flex items-start gap-2 p-3 bg-[#1A1F2E] rounded-lg"
-                        >
-                          <span className="text-[#60A5FA] text-lg">•</span>
-                          <p className="text-sm text-white">
-                            {safeRender(feature)}
-                          </p>
-                        </div>
-                      ))}
+              {aiAnalysis.keyFeatures &&
+                Array.isArray(aiAnalysis.keyFeatures) &&
+                aiAnalysis.keyFeatures.length > 0 && (
+                  <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                        <CubeIcon className="w-5 h-5 text-[#60A5FA]" />
+                        Key Features
+                      </h3>
+                      <button
+                        onClick={() => toggleSection("features")}
+                        className="text-[#94A3B8] hover:text-white transition-colors"
+                      >
+                        {expandedSections.features ? (
+                          <ChevronUpIcon className="w-5 h-5" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5" />
+                        )}
+                      </button>
                     </div>
-                  )}
-                </div>
-              )}
+                    {expandedSections.features && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {aiAnalysis.keyFeatures.map((feature, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 p-3 bg-[#1A1F2E] rounded-lg"
+                          >
+                            <span className="text-[#60A5FA] text-lg">•</span>
+                            <p className="text-sm text-white">
+                              {safeRender(feature)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
               {/* Improvement Suggestions */}
               {aiAnalysis.improvementSuggestions &&
+                Array.isArray(aiAnalysis.improvementSuggestions) &&
                 aiAnalysis.improvementSuggestions.length > 0 && (
                   <div className="bg-[#0F1320]/50 backdrop-blur-sm rounded-2xl border border-[#334155] p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -1489,9 +1510,9 @@ export default function HomePage() {
       `}</style>
       {/* Documentation Modal - ADD THIS HERE */}
       {showDocumentation && (
-        <RepositoryDocumentation 
-          analysis={analysis} 
-          onClose={() => setShowDocumentation(false)} 
+        <RepositoryDocumentation
+          analysis={analysis}
+          onClose={() => setShowDocumentation(false)}
         />
       )}
     </div>

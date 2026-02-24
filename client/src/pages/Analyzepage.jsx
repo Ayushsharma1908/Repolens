@@ -1,14 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
+import AnalysisSkeleton from "./AnalysisSkeleton";
 
 export default function AnalyzePage() {
   const navigate = useNavigate();
   const [repoUrl, setRepoUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // This is 'loading', not 'isLoading'
   const [error, setError] = useState(null);
 
-  // In your AnalyzePage.jsx, update the handleAnalyze function:
   const handleAnalyze = async (e) => {
     e.preventDefault();
 
@@ -48,6 +48,11 @@ export default function AnalyzePage() {
       setLoading(false);
     }
   };
+  
+  // Show skeleton loading while analyzing - FIXED: changed isLoading to loading
+  if (loading) {
+    return <AnalysisSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-[#0B0E17] font-['Plus_Jakarta_Sans',_'Inter',_sans-serif] text-white relative overflow-hidden">
