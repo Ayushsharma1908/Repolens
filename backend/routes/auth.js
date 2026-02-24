@@ -4,6 +4,8 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const GitHubStrategy = require('passport-github2').Strategy;
 const authService = require('../services/authService');
+console.log("AuthService:", authService);
+console.log("findOrCreateUser:", authService.findOrCreateUser);
 const router = express.Router();
 
 // Passport serialization
@@ -44,9 +46,6 @@ passport.use(new GitHubStrategy({
     }
   }
 ));
-
-// Initialize Passport
-router.use(passport.initialize());
 
 // Google Auth Routes
 router.get('/google',
@@ -135,5 +134,7 @@ router.get('/verify', (req, res) => {
     res.status(401).json({ valid: false });
   }
 });
+
+
 
 module.exports = router;

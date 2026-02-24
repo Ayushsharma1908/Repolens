@@ -3,6 +3,7 @@ require("dotenv").config();
 console.log("OPENROUTER:", process.env.OPENROUTER_API_KEY);
 const express = require("express");
 const cors = require("cors");
+const passport = require('passport');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
@@ -18,6 +19,7 @@ app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true
 }));
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(session({
@@ -30,6 +32,8 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use('/auth', authRoutes);
 

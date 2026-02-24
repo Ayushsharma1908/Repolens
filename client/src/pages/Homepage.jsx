@@ -142,6 +142,12 @@ export default function HomePage() {
       [section]: !prev[section],
     }));
   };
+  
+  const token = localStorage.getItem("token");
+
+if (!token) {
+  navigate("/signin");
+}
 
   // Get appropriate icon based on file extension
   const getFileIcon = (filename) => {

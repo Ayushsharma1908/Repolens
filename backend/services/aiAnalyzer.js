@@ -125,7 +125,9 @@ async function runAIAnalysis(repoData) {
     }
   } catch (error) {
     console.error("AI Analysis Error:", error.response?.data || error.message);
-
+console.log("Google:", process.env.GOOGLE_CLIENT_ID);
+console.log("GitHub:", process.env.GITHUB_CLIENT_ID);
+console.log("OpenRouter:", process.env.OPENROUTER);
     return {
       projectType: "Unknown",
       architectureStyle: "Unknown",

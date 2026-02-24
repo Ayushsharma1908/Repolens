@@ -5,7 +5,7 @@ import SignUp from "./pages/SignUp";
 import HomePage from "./pages/Homepage";
 import AnalyzePage from "./pages/Analyzepage";
 import AuthCallback from "./pages/AuthCallback";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
 export default function App() {
   return (
     <BrowserRouter>
