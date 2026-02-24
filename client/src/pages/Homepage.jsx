@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
 import RepositoryDocumentation from "./RepositoryDocumentation";
+import UserProfile from "../components/UserProfile";
+import { useAuth } from "../context/AuthContext";
 import {
   FolderIcon,
   DocumentIcon,
@@ -55,7 +57,7 @@ export default function HomePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const analysis = location.state?.analysis;
-
+  const { user } = useAuth();
   // Access the nested data correctly
   const metadata = analysis?.metadata || {};
   const basicAnalysis = analysis?.basicAnalysis || {};
@@ -114,18 +116,18 @@ export default function HomePage() {
       console.log("Layers:", aiAnalysis.layers);
     }
   }, [analysis]);
-  
+
   useEffect(() => {
-  console.log("🔍 AI Analysis Structure:", {
-    dataFlow: aiAnalysis.dataFlow,
-    isArray: Array.isArray(aiAnalysis.dataFlow),
-    type: typeof aiAnalysis.dataFlow,
-    layers: aiAnalysis.layers,
-    patterns: aiAnalysis.patternsDetected,
-    features: aiAnalysis.keyFeatures,
-    suggestions: aiAnalysis.improvementSuggestions
-  });
-}, [aiAnalysis]);
+    console.log("🔍 AI Analysis Structure:", {
+      dataFlow: aiAnalysis.dataFlow,
+      isArray: Array.isArray(aiAnalysis.dataFlow),
+      type: typeof aiAnalysis.dataFlow,
+      layers: aiAnalysis.layers,
+      patterns: aiAnalysis.patternsDetected,
+      features: aiAnalysis.keyFeatures,
+      suggestions: aiAnalysis.improvementSuggestions,
+    });
+  }, [aiAnalysis]);
 
   const toggleFolder = (path) => {
     setExpandedFolders((prev) => ({
@@ -679,6 +681,17 @@ export default function HomePage() {
               <DocumentTextIcon className="w-5 h-5" />
               Full Documentation
             </button>
+            {/* User Profile - Add this */}
+            {user ? (
+              <UserProfile />
+            ) : (
+              <button
+                onClick={() => navigate("/signin")}
+                className="text-sm text-white hover:text-white transition px-4 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#60A5FA]"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </nav>
       </header>

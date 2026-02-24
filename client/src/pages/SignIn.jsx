@@ -2,25 +2,58 @@ import { useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleGoogleSignIn = () => {
-    // Add Google OAuth logic here
-    console.log("Google Sign In");
+    // Redirect to Google OAuth
+    window.location.href = "http://localhost:5000/auth/google";
   };
 
   const handleGithubSignIn = () => {
-    // Add GitHub OAuth logic here
-    console.log("GitHub Sign In");
+    // Redirect to GitHub OAuth
+    window.location.href = "http://localhost:5000/auth/github";
   };
 
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
-    // Add your sign-in logic here
-    console.log("Sign In");
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:5000/auth/signin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        login(data.user);
+        navigate("/");
+      } else {
+        setError(data.message || "Invalid email or password");
+      }
+    } catch (err) {
+      setError("Network error. Please try again.");
+      console.error("Sign in error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="min-h-screen bg-[#0B0E17] font-['Plus_Jakarta_Sans',_'Inter',_sans-serif] text-white relative overflow-hidden">

@@ -3,6 +3,9 @@ require("dotenv").config();
 console.log("OPENROUTER:", process.env.OPENROUTER_API_KEY);
 const express = require("express");
 const cors = require("cors");
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
+const authRoutes = require('./routes/auth');
 
 const githubService = require("./services/githubService");
 const { runBasicAnalysis, runEnhancedAnalysis } = require("./analyzers/basicAnalyzer");
@@ -11,6 +14,24 @@ const { runAIAnalysis } = require("./services/aiAnalyzer");
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true
+}));
+app.use(express.json());
+app.use(cookieParser());
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+app.use('/auth', authRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Repo Analyzer API Running 🚀" });
