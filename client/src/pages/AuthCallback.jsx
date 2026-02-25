@@ -18,7 +18,7 @@ export default function AuthCallback() {
         localStorage.setItem('token', user.token);
         
         // Redirect to home page
-        navigate('/', { replace: true });
+        navigate('/analyze', { replace: true });
       } catch (error) {
         console.error('Error parsing user data:', error);
         navigate('/signin?error=invalid_data');
@@ -27,7 +27,7 @@ export default function AuthCallback() {
       navigate('/signin?error=no_data');
     }
   }, [location, navigate]);
-
+console.log("userdata");
   return (
     <div className="min-h-screen bg-[#0B0E17] flex items-center justify-center">
       <div className="text-center">
