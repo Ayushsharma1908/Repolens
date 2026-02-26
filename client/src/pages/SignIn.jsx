@@ -208,7 +208,7 @@ export default function SignIn() {
                       onClick={() => navigate("/signup")}
                       className="text-[#60A5FA] hover:text-white font-medium transition"
                     >
-                      Create an account
+                      Create your account
                     </button>
                   </p>
                 </div>
