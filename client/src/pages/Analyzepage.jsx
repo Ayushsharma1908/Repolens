@@ -2,9 +2,12 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
 import AnalysisSkeleton from "./AnalysisSkeleton";
+import UserProfile from "../components/UserProfile";
+import { useAuth } from "../context/AuthContext";
 
 export default function AnalyzePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [repoUrl, setRepoUrl] = useState("");
   const [loading, setLoading] = useState(false); // This is 'loading', not 'isLoading'
   const [error, setError] = useState(null);
