@@ -149,7 +149,7 @@ export default function AnalyzePage() {
           {/* Trending Repos */}
           <div className="mb-16">
             <h3 className="text-sm font-semibold text-[#94A3B8] uppercase tracking-wider mb-4">
-              TRENDING NOW
+              TREND SETTERS
             </h3>
             <div className="flex flex-wrap items-center gap-6">
               <a
