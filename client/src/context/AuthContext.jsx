@@ -8,26 +8,56 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing user in localStorage
-    const storedUser = localStorage.getItem('user');
+    // Handle OAuth redirect — backend sends token as ?token=xxx in URL
+    const params = new URLSearchParams(window.location.search);
+    const oauthToken = params.get('token');
+
+    if (oauthToken) {
+      // Clean the token from URL immediately
+      window.history.replaceState({}, document.title, window.location.pathname);
+      fetchUserFromToken(oauthToken);
+      return;
+    }
+
+    // Check existing session in localStorage
     const token = localStorage.getItem('token');
-    
-    if (storedUser && token) {
-      // Verify token with backend
+    if (token) {
       verifyToken(token);
     } else {
       setLoading(false);
     }
   }, []);
 
+  // Called after OAuth redirect — fetch user profile using token
+  const fetchUserFromToken = async (token) => {
+    try {
+      const response = await fetch('http://localhost:5000/auth/verify', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Store token + user separately so login() always has what it needs
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        setUser(data.user);
+      } else {
+        logout();
+      }
+    } catch (error) {
+      console.error('OAuth token fetch failed:', error);
+      logout();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const verifyToken = async (token) => {
     try {
       const response = await fetch('http://localhost:5000/auth/verify', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
@@ -42,10 +72,11 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = (userData) => {
+  // FIX: store token and user separately — token lives at top level of response
+  const login = (userData, token) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', userData.token);
+    localStorage.setItem('token', token);
   };
 
   const logout = () => {
