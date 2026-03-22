@@ -91,3 +91,6 @@ npm run build:client
 
 ### Backend
 - Node.js (ready for Express, Fastify, or your preferred framework)
+
+### Database
+- MongoDB
