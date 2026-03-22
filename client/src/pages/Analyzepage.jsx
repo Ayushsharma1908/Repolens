@@ -51,7 +51,7 @@ export default function AnalyzePage() {
       setLoading(false);
     }
   };
-  
+
   // Show skeleton loading while analyzing - FIXED: changed isLoading to loading
   if (loading) {
     return <AnalysisSkeleton />;
@@ -88,9 +88,16 @@ export default function AnalyzePage() {
 
           {/* User Menu */}
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#3B82F6] to-[#818CF8] rounded-full flex items-center justify-center">
-              <span className="text-xs font-bold text-white">JD</span>
-            </div>
+            {user ? (
+              <UserProfile />
+            ) : (
+              <button
+                onClick={() => navigate("/signin")}
+                className="text-sm text-white hover:text-white transition px-4 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#60A5FA]"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </nav>
       </header>

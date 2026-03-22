@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
+import UserProfile from "../components/UserProfile";
+import { useAuth } from "../context/AuthContext";
 
 const CYCLING_WORDS = [
   "any codebase.",
@@ -13,6 +15,7 @@ const CYCLING_WORDS = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [displayed, setDisplayed] = useState("");
   const [wordIndex, setWordIndex] = useState(0);
@@ -61,12 +64,16 @@ export default function LandingPage() {
             <a href="#how-it-works" className="text-[#94A3B8] hover:text-white transition text-sm font-medium">How it Works</a>
             <a href="https://github.com/Ayushsharma1908/gitbuddy/tree/main" className="text-[#94A3B8] hover:text-white transition text-sm font-medium">GitHub</a>
           </div>
-          <button
-            onClick={() => navigate("/signin")}
-            className="bg-[#3B82F6] hover:bg-[#60A5FA] text-black px-5 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30"
-          >
-            <span>Get Started</span>
-          </button>
+          {user ? (
+            <UserProfile />
+          ) : (
+            <button
+              onClick={() => navigate("/signin")}
+              className="bg-[#3B82F6] hover:bg-[#60A5FA] text-black px-5 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30"
+            >
+              <span>Get Started</span>
+            </button>
+          )}
         </nav>
       </header>
 
@@ -127,7 +134,7 @@ export default function LandingPage() {
                 <span>🚀</span>
                 <span>Start Analyzing — It's Free</span>
               </button>
-              
+
             </div>
 
             {/* Social proof */}
@@ -338,7 +345,7 @@ export default function LandingPage() {
                   <span>🚀</span>
                   <span>Analyze Your First Repo</span>
                 </button>
-                
+
               </div>
             </div>
           </div>

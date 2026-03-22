@@ -1,40 +1,36 @@
 // server.js
 require("dotenv").config();
-console.log("OPENROUTER:", process.env.OPENROUTER_API_KEY);
+
 const express = require("express");
 const cors = require("cors");
 const passport = require('passport');
-const session = require('express-session');
 const cookieParser = require('cookie-parser');
-const authRoutes = require('./routes/auth');
+const mongoose = require('mongoose');
 
+// Import passport config (strategies must be loaded before routes)
+require('./config/passport');
+
+const authRoutes = require('./routes/auth');
 const githubService = require("./services/githubService");
 const { runBasicAnalysis, runEnhancedAnalysis } = require("./analyzers/basicAnalyzer");
 const { runAIAnalysis } = require("./services/aiAnalyzer");
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+
+// ─────────────────────────────────────────────
+// MIDDLEWARE — only once each
+// ─────────────────────────────────────────────
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
+  credentials: true,
 }));
-
 app.use(express.json());
 app.use(cookieParser());
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-app.use(passport.initialize());
-app.use(passport.session());
+app.use(passport.initialize()); // JWT only — no sessions needed
 
+// ─────────────────────────────────────────────
+// ROUTES
+// ─────────────────────────────────────────────
 app.use('/auth', authRoutes);
 
 app.get("/", (req, res) => {
@@ -49,7 +45,6 @@ app.post("/analyze", async (req, res) => {
       return res.status(400).json({ error: "Repository URL required" });
     }
 
-    // 1️⃣ Parse repo URL
     const parsed = repoUrl
       .replace("https://github.com/", "")
       .replace(".git", "")
@@ -62,10 +57,8 @@ app.post("/analyze", async (req, res) => {
       return res.status(400).json({ error: "Invalid GitHub URL" });
     }
 
-    // 2️⃣ Fetch repository data with more details
     const repoData = await githubService.fetchRepositoryData(owner, repo);
 
-    // 3️⃣ Run enhanced deterministic analysis
     const basicAnalysis = runBasicAnalysis(
       repoData.structure,
       repoData.languages,
@@ -74,7 +67,6 @@ app.post("/analyze", async (req, res) => {
 
     const enhancedAnalysis = runEnhancedAnalysis(repoData);
 
-    // 4️⃣ AI reasoning layer with more context
     const aiResult = await runAIAnalysis({
       metadata: repoData.metadata,
       structure: repoData.topLevel,
@@ -87,7 +79,6 @@ app.post("/analyze", async (req, res) => {
       contributors: repoData.contributors
     });
 
-    // 5️⃣ Final response with enriched data
     res.json({
       metadata: repoData.metadata,
       basicAnalysis,
@@ -114,7 +105,9 @@ app.post("/analyze", async (req, res) => {
   }
 });
 
-// Helper functions
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
 function countTotalFiles(structure) {
   let count = 0;
   const countFiles = (items) => {
@@ -158,8 +151,16 @@ function getFileTypeDistribution(structure) {
   return distribution;
 }
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  // console.log("All ENV:", process.env);
-});
+// ─────────────────────────────────────────────
+// CONNECT DB + START SERVER
+// ─────────────────────────────────────────────
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('✅ MongoDB connected');
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1);
+  });

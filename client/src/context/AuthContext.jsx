@@ -41,6 +41,8 @@ export function AuthProvider({ children }) {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(data.user));
         setUser(data.user);
+        // Redirect to analyze page after successful OAuth login
+        window.location.href = '/analyzepage';
       } else {
         logout();
       }

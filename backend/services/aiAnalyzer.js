@@ -17,7 +17,6 @@ function buildPrompt(repoData) {
 
   // Get key directories
   const keyDirs = structure
-    .filter(item => item.type === 'dir')
     .slice(0, 10)
     .join(', ');
 
@@ -37,7 +36,10 @@ You are a senior software architect performing deep repository analysis.
 Analyze the repository carefully and return STRICT VALID JSON only.
 Do NOT include explanations.
 Do NOT include markdown.
+Do NOT include emojis.
 Return only pure JSON.
+
+Make the output clean, professional, and human-readable.
 
 Repository: ${repoName}
 Description: ${description}
@@ -65,8 +67,13 @@ Based on this comprehensive data, provide a detailed analysis including:
 1. Project Type: Be specific (e.g., "E-commerce SaaS Platform", "Machine Learning CLI Tool", "Real-time Chat Application")
 2. Architecture Style: Detailed architecture pattern
 3. Layers: All logical layers detected
-4. Main Technologies: Core technologies and their purpose
-5. Patterns Detected: Specific design patterns used
+4. Main Technologies:
+Return a CLEAN list of technologies as simple readable strings.
+Do NOT return objects.
+Do NOT include "technology" or "purpose" keys.
+
+Example:
+["React (Frontend UI)", "Node.js (Backend runtime)", "Express (API layer)", "MongoDB (Database)"]5. Patterns Detected: Specific design patterns used
 6. Project Structure: Key architectural components
 7. Data Flow: How data moves through the system
 8. Key Features: Main functionality based on structure
@@ -75,15 +82,15 @@ Based on this comprehensive data, provide a detailed analysis including:
 Return STRICT JSON in this exact format:
 
 {
-  "projectType": "",
-  "architectureStyle": "",
-  "layers": [],
-  "mainTechnologies": [],
-  "patternsDetected": [],
-  "projectStructure": [],
-  "dataFlow": [],
-  "keyFeatures": [],
-  "improvementSuggestions": []
+  "projectType": "string",
+  "architectureStyle": "string",
+  "layers": ["string"],
+  "mainTechnologies": ["string"],
+  "patternsDetected": ["string"],
+  "projectStructure": ["string"],
+  "dataFlow": ["string"],
+  "keyFeatures": ["string"],
+  "improvementSuggestions": ["string"]
 }
 `;
 }
@@ -114,8 +121,9 @@ async function runAIAnalysis(repoData) {
       },
     );
 
-    const content = response.data.choices[0].message.content.trim();
+const content = response.data.choices?.[0]?.message?.content?.trim();
 
+if (!content) throw new Error("Empty AI response");
     try {
       return JSON.parse(content);
     } catch (err) {
