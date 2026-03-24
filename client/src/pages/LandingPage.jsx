@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
-import UserProfile from "../components/UserProfile";
 import { useAuth } from "../context/AuthContext";
 
 const CYCLING_WORDS = [

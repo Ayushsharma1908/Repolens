@@ -1,33 +1,37 @@
 // client/pages/AuthCallback.jsx
-import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-
+import { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 export default function AuthCallback() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setUser } = useAuth();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const userData = params.get('user');
-    
+    const userData = params.get("user");
+
     if (userData) {
       try {
         const user = JSON.parse(decodeURIComponent(userData));
         // Store user data in localStorage or context
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('token', user.token);
-        
-        // Redirect to home page
-        navigate('/analyze', { replace: true });
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("token", user.token);
+        setUser(user);
+
+       
+        setTimeout(() => {
+          navigate("/analyze", { replace: true });
+        }, 100);
       } catch (error) {
-        console.error('Error parsing user data:', error);
-        navigate('/signin?error=invalid_data');
+        console.error("Error parsing user data:", error);
+        navigate("/signin?error=invalid_data");
       }
     } else {
-      navigate('/signin?error=no_data');
+      navigate("/signin?error=no_data");
     }
   }, [location, navigate]);
-console.log("userdata");
+  console.log("userdata:", userData);
   return (
     <div className="min-h-screen bg-[#0B0E17] flex items-center justify-center">
       <div className="text-center">

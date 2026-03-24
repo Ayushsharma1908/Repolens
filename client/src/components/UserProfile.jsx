@@ -1,7 +1,7 @@
 // client/components/UserProfile.jsx
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function UserProfile() {
   const { user, logout } = useAuth();
@@ -13,7 +13,7 @@ export default function UserProfile() {
   const handleLogout = () => {
     logout();
     setShowDropdown(false);
-    navigate('/');
+    navigate("/");
   };
 
   return (
@@ -31,7 +31,9 @@ export default function UserProfile() {
         ) : (
           <div className="w-8 h-8 bg-gradient-to-br from-[#3B82F6] to-[#818CF8] rounded-full flex items-center justify-center border-2 border-[#60A5FA] group-hover:border-[#60A5FA]/80 transition">
             <span className="text-xs font-bold text-white">
-              {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+              {user.name?.charAt(0).toUpperCase() ||
+                user.email?.charAt(0).toUpperCase() ||
+                "U"}
             </span>
           </div>
         )}
@@ -40,15 +42,19 @@ export default function UserProfile() {
       {showDropdown && (
         <>
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-40 bg-transparent"
             onClick={() => setShowDropdown(false)}
           />
-          <div className="absolute right-0 mt-2 w-64 bg-[#1A1F2E] border border-[#334155] rounded-xl shadow-xl z-50 overflow-hidden">
+          <div className="absolute right-0 mt-4 w-64 bg-[#1A1F2E] border border-[#334155] rounded-xl shadow-xl z-[999] overflow-hidden">
             <div className="p-4 border-b border-[#334155]">
-              <p className="text-white font-medium truncate">{user.name || 'User'}</p>
-              <p className="text-xs text-[#94A3B8] mt-1 truncate">{user.email}</p>
+              <p className="text-white font-medium truncate">
+                {user?.name || user?.username || user?.email || "User"}
+              </p>{" "}
+              <p className="text-xs text-[#94A3B8] mt-1 truncate">
+                {user.email}
+              </p>
               <p className="text-xs text-[#60A5FA] mt-2 capitalize">
-                Signed in with {user.provider || 'email'}
+                Signed in with {user.provider || "email"}
               </p>
             </div>
             <button

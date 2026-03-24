@@ -143,11 +143,11 @@ export default function HomePage() {
     }));
   };
   
-  const token = localStorage.getItem("token");
-
-if (!token) {
-  navigate("/signin");
-}
+ useEffect(() => {
+  if (user === null) {
+    navigate("/signin");
+  }
+}, [user, navigate]);
 
   // Get appropriate icon based on file extension
   const getFileIcon = (filename) => {
@@ -654,7 +654,7 @@ if (!token) {
       </div>
 
       {/* Header */}
-      <header className="relative w-full px-6 py-5 md:px-12 md:py-6 border-b border-[#334155] bg-[#0B0E17]/80 backdrop-blur-sm z-10">
+      <header className="relative w-full px-6 py-5 md:px-12 md:py-6 border-b border-[#334155] bg-[#0B0E17]/80 backdrop-blur-sm z-50">
         <nav className="flex items-center justify-between max-w-7xl mx-auto">
           <div
             onClick={() => navigate("/")}
@@ -687,6 +687,7 @@ if (!token) {
               <DocumentTextIcon className="w-5 h-5" />
               Full Documentation
             </button>
+            <div className = "relative">
             {/* User Profile - Add this */}
             {user ? (
               <UserProfile />
@@ -697,7 +698,9 @@ if (!token) {
               >
                 Sign In
               </button>
+              
             )}
+            </div>
           </div>
         </nav>
       </header>

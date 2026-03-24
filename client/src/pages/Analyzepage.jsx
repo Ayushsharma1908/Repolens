@@ -7,11 +7,12 @@ import { useAuth } from "../context/AuthContext";
 
 export default function AnalyzePage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();  
   const [repoUrl, setRepoUrl] = useState("");
   const [loading, setLoading] = useState(false); // This is 'loading', not 'isLoading'
   const [error, setError] = useState(null);
 
+ 
   const handleAnalyze = async (e) => {
     e.preventDefault();
 
@@ -52,11 +53,20 @@ export default function AnalyzePage() {
     }
   };
 
+  if (authLoading) {
+  return <div className="text-white p-10">Loading...</div>;
+}
+
+if (!user) {
+  navigate("/signin");
+  return null;
+}
+
   // Show skeleton loading while analyzing - FIXED: changed isLoading to loading
   if (loading) {
     return <AnalysisSkeleton />;
   }
-
+ 
   return (
     <div className="min-h-screen bg-[#0B0E17] font-['Plus_Jakarta_Sans',_'Inter',_sans-serif] text-white relative overflow-hidden">
       {/* Background Glow Effects - Static */}
@@ -67,7 +77,7 @@ export default function AnalyzePage() {
       <div className="absolute top-40 right-20 w-80 h-80 bg-[#7DD3FC]/20 rounded-full blur-[100px]"></div>
 
       {/* Header */}
-      <header className="relative w-full px-6 py-5 md:px-12 md:py-6 border-b border-[#334155] bg-[#0B0E17]/80 backdrop-blur-sm z-10">
+      <header className="relative w-full px-6 py-5 md:px-12 md:py-6 border-b border-[#334155] bg-[#0B0E17]/80 backdrop-blur-sm z-[999]">
         <nav className="flex items-center justify-between max-w-7xl mx-auto">
           {/* Logo */}
           <div

@@ -8,25 +8,28 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Handle OAuth redirect — backend sends token as ?token=xxx in URL
-    const params = new URLSearchParams(window.location.search);
-    const oauthToken = params.get('token');
+  const params = new URLSearchParams(window.location.search);
+  const oauthToken = params.get('token');
 
-    if (oauthToken) {
-      // Clean the token from URL immediately
-      window.history.replaceState({}, document.title, window.location.pathname);
-      fetchUserFromToken(oauthToken);
-      return;
-    }
+  // ✅ load stored user instantly
+  const storedUser = localStorage.getItem('user');
+  if (storedUser) {
+    setUser(JSON.parse(storedUser));
+  }
 
-    // Check existing session in localStorage
-    const token = localStorage.getItem('token');
-    if (token) {
-      verifyToken(token);
-    } else {
-      setLoading(false);
-    }
-  }, []);
+  if (oauthToken) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    fetchUserFromToken(oauthToken);
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+  if (token) {
+    verifyToken(token);
+  } else {
+    setLoading(false);
+  }
+}, []);
 
   // Called after OAuth redirect — fetch user profile using token
   const fetchUserFromToken = async (token) => {
@@ -41,14 +44,13 @@ export function AuthProvider({ children }) {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(data.user));
         setUser(data.user);
-        // Redirect to analyze page after successful OAuth login
-        window.location.href = '/analyzepage';
+       
       } else {
         logout();
       }
     } catch (error) {
-      console.error('OAuth token fetch failed:', error);
-      logout();
+        console.error('Token verification failed:', error);
+  setLoading(false);
     } finally {
       setLoading(false);
     }
