@@ -64,16 +64,14 @@ export default function LandingPage() {
             <a href="#how-it-works" className="text-[#94A3B8] hover:text-white transition text-sm font-medium">How it Works</a>
             <a href="https://github.com/Ayushsharma1908/gitbuddy/tree/main" className="text-[#94A3B8] hover:text-white transition text-sm font-medium">GitHub</a>
           </div>
-          {user ? (
-            <UserProfile />
-          ) : (
+          
             <button
               onClick={() => navigate("/signin")}
               className="bg-[#3B82F6] hover:bg-[#60A5FA] text-black px-5 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30"
             >
               <span>Get Started</span>
             </button>
-          )}
+          
         </nav>
       </header>
 
