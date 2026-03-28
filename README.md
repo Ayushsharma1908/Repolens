@@ -1,11 +1,11 @@
-# GitBuddy
+# Repolens
 
 Understand any GitHub repository in seconds. AI-powered visualization and explanations tailored for beginners and developers alike.
 
 ## Project Structure
 
 ```
-gitbuddy/
+Repolens/
 ├── client/                 # Frontend application
 │   ├── src/
 │   │   ├── pages/         # Page components
