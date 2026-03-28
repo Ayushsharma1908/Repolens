@@ -21,6 +21,35 @@ export default function LandingPage() {
   const [charIndex, setCharIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Splash Screen State
+  const [showSplash, setShowSplash] = useState(true);
+  const [animateOut, setAnimateOut] = useState(false);
+
+  useEffect(() => {
+    // Check if we've already shown the splash screen in this session
+    const hasSeenSplash = sessionStorage.getItem("repoLensSplashSeen");
+    if (hasSeenSplash) {
+      setShowSplash(false);
+      return;
+    }
+
+    // Trigger fade-out animation after 2.5 seconds
+    const timer1 = setTimeout(() => {
+      setAnimateOut(true);
+    }, 2500);
+
+    // Completely remove splash screen after animation completes (3 seconds total)
+    const timer2 = setTimeout(() => {
+      setShowSplash(false);
+      sessionStorage.setItem("repoLensSplashSeen", "true");
+    }, 3000);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, []);
+
   useEffect(() => {
     const currentWord = CYCLING_WORDS[wordIndex];
     let timeout;
@@ -42,6 +71,53 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#0B0E17] font-['Plus_Jakarta_Sans',_'Inter',_sans-serif] text-white relative overflow-hidden">
+      
+      {/* Dynamic Keyframes for Animations */}
+      <style>{`
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        @keyframes splashPop {
+          0% { transform: scale(0.6); opacity: 0; }
+          60% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes fadeUp {
+          0% { transform: translateY(20px); opacity: 0; }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+        .splash-logo { animation: splashPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .splash-title { animation: fadeUp 0.8s ease-out 0.4s forwards; opacity: 0; }
+        .splash-tagline { animation: fadeUp 0.8s ease-out 0.6s forwards; opacity: 0; }
+      `}</style>
+
+      {/* Splash Screen Animation */}
+      {showSplash && (
+        <div 
+          className={`fixed inset-0 z-[9999] bg-[#0B0E17] flex flex-col items-center justify-center transition-opacity duration-500 ${
+            animateOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
+          {/* Background subtle glow exactly like landing page */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#3B82F6]/10 rounded-full blur-[150px]"></div>
+          
+          <div className="relative z-10 flex flex-col items-center justify-center">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-[#1E293B] to-[#0F1320] rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/20 border border-[#334155] splash-logo mb-6">
+              <img src={RepoLensLogo} alt="RepoLens Logo" className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+            </div>
+            
+            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white splash-title mb-3">
+              RepoLens
+            </h1>
+            
+            <p className="text-lg sm:text-xl text-[#94A3B8] font-medium splash-tagline flex items-center gap-2">
+              See through the noise <span className="w-1 h-1 bg-[#3B82F6] rounded-full animate-pulse inline-block"></span>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Background Glow Effects */}
       <div className="absolute top-20 left-10 w-96 h-96 bg-[#60A5FA]/20 rounded-full blur-[120px]"></div>
       <div className="absolute bottom-20 right-10 w-[500px] h-[500px] bg-[#38BDF8]/20 rounded-full blur-[150px]"></div>
@@ -53,24 +129,23 @@ export default function LandingPage() {
 
       {/* Header */}
       <header className="relative w-full px-6 py-5 md:px-12 md:py-6 border-b border-[#334155] bg-[#0B0E17]/80 backdrop-blur-sm z-10">
-        <nav className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
+        <nav className="flex flex-wrap items-center justify-between max-w-7xl mx-auto gap-4">
+          <div className="flex items-center gap-3 shrink-0">
             <img src={RepoLensLogo} alt="RepoLens Logo" className="w-9 h-9 object-contain" />
             <span className="text-xl font-semibold text-white tracking-tight">RepoLens</span>
           </div>
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-8 shrink-0">
             <a href="#features" className="text-[#94A3B8] hover:text-white transition text-sm font-medium">Features</a>
             <a href="#how-it-works" className="text-[#94A3B8] hover:text-white transition text-sm font-medium">How it Works</a>
             <a href="https://github.com/Ayushsharma1908/gitbuddy/tree/main" className="text-[#94A3B8] hover:text-white transition text-sm font-medium">GitHub</a>
           </div>
-          
-            <button
-              onClick={() => navigate("/signin")}
-              className="bg-[#3B82F6] hover:bg-[#60A5FA] text-black px-5 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30"
-            >
-              <span>Get Started</span>
-            </button>
-          
+
+          <button
+            onClick={() => navigate("/signin")}
+            className="bg-[#3B82F6] hover:bg-[#60A5FA] text-black px-5 py-2.5 rounded-lg font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 shrink-0 max-sm:w-full"
+          >
+            <span>Get Started</span>
+          </button>
         </nav>
       </header>
 
@@ -108,14 +183,6 @@ export default function LandingPage() {
               </span>
             </h1>
 
-            {/* Blinking cursor keyframe */}
-            <style>{`
-              @keyframes blink {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0; }
-              }
-            `}</style>
-
             {/* Description */}
             <p className="text-lg md:text-xl text-[#94A3B8] mb-10 max-w-3xl mx-auto leading-relaxed">
               RepoLens visualizes project structures, identifies tech stacks,
@@ -136,7 +203,7 @@ export default function LandingPage() {
 
             {/* Social proof */}
             <p className="text-sm text-[#64748B]">
-              Trusted by <span className="text-[#94A3B8] font-medium">5,000+ developers</span> · No credit card required
+              Trusted by <span className="text-[#94A3B8] font-medium">developers</span>
             </p>
 
           </div>
@@ -357,9 +424,7 @@ export default function LandingPage() {
             <span className="text-base font-semibold text-white">RepoLens</span>
           </div>
           <div className="flex items-center gap-6">
-            {["Privacy", "Terms", "Contact"].map((l) => (
-              <a key={l} href="#" className="text-sm text-[#64748B] hover:text-white transition">{l}</a>
-            ))}
+            <p className="text-sm text-[#64748B]">Made by Ayush Sharma</p>
           </div>
         </div>
       </footer>

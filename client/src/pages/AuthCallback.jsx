@@ -5,33 +5,35 @@ import { useAuth } from "../context/AuthContext";
 export default function AuthCallback() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setUser } = useAuth();
+  const { login } = useAuth();
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const userData = params.get("user");
+useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const token = params.get("token");
 
-    if (userData) {
-      try {
-        const user = JSON.parse(decodeURIComponent(userData));
-        // Store user data in localStorage or context
-        localStorage.setItem("user", JSON.stringify(user));
-        localStorage.setItem("token", user.token);
-        setUser(user);
+  if (token) {
+    fetch("http://localhost:5000/auth/verify", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) {
+          // ✅ use login instead of setUser
+          login(data.user, token);
 
-       
-        setTimeout(() => {
-          navigate("/analyze", { replace: true });
-        }, 100);
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        navigate("/signin?error=invalid_data");
-      }
-    } else {
-      navigate("/signin?error=no_data");
-    }
-  }, [location, navigate]);
-  console.log("userdata:", userData);
+          navigate("/analyzepage", { replace: true });
+        } else {
+          navigate("/signin");
+        }
+      })
+      .catch(() => navigate("/signin"));
+  } else {
+    navigate("/signin");
+  }
+}, [location, navigate, login]);
+
   return (
     <div className="min-h-screen bg-[#0B0E17] flex items-center justify-center">
       <div className="text-center">

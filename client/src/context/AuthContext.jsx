@@ -8,49 +8,54 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const oauthToken = params.get('token');
+    const initAuth = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const oauthToken = params.get('token');
 
-  // ✅ load stored user instantly
-  const storedUser = localStorage.getItem('user');
-  if (storedUser) {
-    setUser(JSON.parse(storedUser));
-  }
+      // ✅ load stored user instantly
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
 
-  if (oauthToken) {
-    window.history.replaceState({}, document.title, window.location.pathname);
-    fetchUserFromToken(oauthToken);
-    return;
-  }
+      // ✅ OAuth flow
+      if (oauthToken) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        await fetchUserFromToken(oauthToken);
+        return;
+      }
 
-  const token = localStorage.getItem('token');
-  if (token) {
-    verifyToken(token);
-  } else {
-    setLoading(false);
-  }
-}, []);
+      const token = localStorage.getItem('token');
+
+      if (token) {
+        await verifyToken(token);
+      }
+
+      setLoading(false);
+    };
+
+    initAuth();
+  }, []);
 
   // Called after OAuth redirect — fetch user profile using token
   const fetchUserFromToken = async (token) => {
     try {
       const response = await fetch('http://localhost:5000/auth/verify', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.ok) {
         const data = await response.json();
-        // Store token + user separately so login() always has what it needs
+
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(data.user));
         setUser(data.user);
-       
       } else {
         logout();
       }
     } catch (error) {
-        console.error('Token verification failed:', error);
-  setLoading(false);
+      console.error('Token verification failed:', error);
+      setLoading(false);
     } finally {
       setLoading(false);
     }
@@ -59,7 +64,7 @@ export function AuthProvider({ children }) {
   const verifyToken = async (token) => {
     try {
       const response = await fetch('http://localhost:5000/auth/verify', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.ok) {
@@ -76,7 +81,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // FIX: store token and user separately — token lives at top level of response
   const login = (userData, token) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));

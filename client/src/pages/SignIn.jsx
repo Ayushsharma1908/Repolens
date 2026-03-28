@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
-import { FaGithub } from "react-icons/fa";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
 import { useState } from "react";
@@ -17,10 +16,6 @@ export default function SignIn() {
 
   const handleGoogleSignIn = () => {
     window.location.href = "http://localhost:5000/auth/google";
-  };
-
-  const handleGithubSignIn = () => {
-    window.location.href = "http://localhost:5000/auth/github";
   };
 
   const handleSignIn = async (e) => {
@@ -40,7 +35,7 @@ export default function SignIn() {
       if (data.success) {
         // FIX: pass user and token separately to match login(userData, token)
         login(data.user, data.token);
-        navigate("/dashboard");
+        navigate("/analyzepage");
       } else {
         setError(data.message || "Invalid email or password");
       }
@@ -105,13 +100,6 @@ export default function SignIn() {
                 >
                   <FcGoogle className="w-5 h-5" />
                   <span className="text-white font-medium">Continue with Google</span>
-                </button>
-                <button
-                  onClick={handleGithubSignIn}
-                  className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-[#1E293B] hover:bg-[#2D3A4F] border border-[#334155] rounded-xl transition-all"
-                >
-                  <FaGithub className="w-5 h-5 text-white" />
-                  <span className="text-white font-medium">Continue with GitHub</span>
                 </button>
 
                 <div className="relative py-5">

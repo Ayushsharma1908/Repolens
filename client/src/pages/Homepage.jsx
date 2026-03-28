@@ -674,18 +674,19 @@ export default function HomePage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/analyzepage")}
-              className="text-sm text-white hover:text-white transition px-4 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#60A5FA] flex items-center gap-2"
+              className="text-sm text-white hover:text-white transition p-2 md:px-4 md:py-2 rounded-lg bg-[#3B82F6] hover:bg-[#60A5FA] flex items-center justify-center gap-2"
+              title="New Analysis"
             >
-              <PlusCircleIcon className="w-6 h-6" />
-              New Analysis
+              <PlusCircleIcon className="w-5 h-5" />
+              <span className="hidden md:inline">New Analysis</span>
             </button>
-            {/* Add this button next to the New Analysis button */}
             <button
               onClick={() => setShowDocumentation(true)}
-              className="text-sm text-white hover:text-white transition px-4 py-2 rounded-lg bg-[#334155] hover:bg-[#475569] flex items-center gap-2"
+              className="text-sm text-white hover:text-white transition p-2 md:px-4 md:py-2 rounded-lg bg-[#334155] hover:bg-[#475569] flex items-center justify-center gap-2"
+              title="Full Documentation"
             >
               <DocumentTextIcon className="w-5 h-5" />
-              Full Documentation
+              <span className="hidden md:inline">Documentation</span>
             </button>
             <div className = "relative">
             {/* User Profile - Add this */}
@@ -734,8 +735,8 @@ export default function HomePage() {
           <div className="mb-8 bg-gradient-to-r from-[#0F1320] to-[#1A1F2E] rounded-2xl border border-[#334155] p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl md:text-4xl font-bold text-white">
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white break-words max-w-full">
                     {metadata.name || analysis.name}
                   </h1>
                   <div className="flex items-center gap-1 bg-[#1A1F2E] px-3 py-1 rounded-full border border-[#334155]">

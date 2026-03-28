@@ -6,6 +6,7 @@ import HomePage from "./pages/Homepage";
 import AnalyzePage from "./pages/Analyzepage";
 import AuthCallback from "./pages/AuthCallback";
 import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 export default function App() {
   return (
     <BrowserRouter>
@@ -14,8 +15,23 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
-          <Route path="/homepage" element={<HomePage />} />
-          <Route path="/analyzepage" element={<AnalyzePage />} />
+          <Route
+            path="/homepage"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/analyzepage"
+            element={
+              <ProtectedRoute>
+                <AnalyzePage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/auth-callback" element={<AuthCallback />} />
         </Routes>
       </AuthProvider>

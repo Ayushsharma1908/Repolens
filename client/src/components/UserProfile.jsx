@@ -45,7 +45,7 @@ export default function UserProfile() {
             className="fixed inset-0 z-40 bg-transparent"
             onClick={() => setShowDropdown(false)}
           />
-          <div className="absolute right-0 mt-4 w-64 bg-[#1A1F2E] border border-[#334155] rounded-xl shadow-xl z-[999] overflow-hidden">
+          <div className="absolute right-0 mt-3 w-56 sm:w-64 bg-[#1A1F2E] border border-[#334155] rounded-xl shadow-2xl z-[999] overflow-hidden max-w-[calc(100vw-2rem)]">
             <div className="p-4 border-b border-[#334155]">
               <p className="text-white font-medium truncate">
                 {user?.name || user?.username || user?.email || "User"}
@@ -53,9 +53,7 @@ export default function UserProfile() {
               <p className="text-xs text-[#94A3B8] mt-1 truncate">
                 {user.email}
               </p>
-              <p className="text-xs text-[#60A5FA] mt-2 capitalize">
-                Signed in with {user.provider || "email"}
-              </p>
+
             </div>
             <button
               onClick={handleLogout}

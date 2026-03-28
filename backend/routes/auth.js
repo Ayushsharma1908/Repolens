@@ -8,7 +8,7 @@ const authService = require('../services/authService');
 // GOOGLE OAUTH
 // ─────────────────────────────────────────────
 router.get('/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
+  passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account' })
 );
 
 router.get('/google/callback',
@@ -19,28 +19,11 @@ router.get('/google/callback',
   (req, res) => {
     // FIX: redirect with ?token= so AuthContext can read it
     const token = authService.generateToken(req.user);
-    res.redirect(`${process.env.CLIENT_URL}/signin?token=${token}`);
+    res.redirect(`${process.env.CLIENT_URL}/auth-callback?token=${token}`);
   }
 );
 
-// ─────────────────────────────────────────────
-// GITHUB OAUTH
-// ─────────────────────────────────────────────
-router.get('/github',
-  passport.authenticate('github', { scope: ['user:email'] })
-);
 
-router.get('/github/callback',
-  passport.authenticate('github', {
-    session: false,
-    failureRedirect: `${process.env.CLIENT_URL}/signin?error=auth_failed`
-  }),
-  (req, res) => {
-    // FIX: redirect with ?token= so AuthContext can read it
-    const token = authService.generateToken(req.user);
-    res.redirect(`${process.env.CLIENT_URL}/signin?token=${token}`);
-  }
-);
 
 // ─────────────────────────────────────────────
 // EMAIL + PASSWORD — SIGN UP

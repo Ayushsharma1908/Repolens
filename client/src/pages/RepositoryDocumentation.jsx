@@ -55,7 +55,7 @@ export default function RepositoryDocumentation({ analysis, onClose }) {
     });
   };
 
-  // Generate and download PDF with better emoji support
+  // Generate and download PDF with minimalist styling
   const generatePDF = () => {
     setIsGenerating(true);
 
@@ -68,29 +68,97 @@ export default function RepositoryDocumentation({ analysis, onClose }) {
         floatPrecision: 16, // Better for Unicode handling
       });
 
-      let yPos = 20;
+      // Minimalist Color Palette
+      const colors = {
+        title: [17, 24, 39], // text-gray-900 
+        heading: [31, 41, 55], // text-gray-800
+        text: [75, 85, 99], // text-gray-500
+        lightText: [107, 114, 128], // text-gray-400
+        line: [229, 231, 235], // border-gray-200
+        bgLight: [249, 250, 251], // bg-gray-50
+      };
+
+      let yPos = 25;
+
+      const checkPageBreak = (neededSpace) => {
+        if (yPos + neededSpace > 275) {
+          doc.addPage();
+          yPos = 25;
+        }
+      };
+
+      const drawSectionHeader = (title) => {
+        checkPageBreak(15);
+        doc.setFontSize(14);
+        doc.setTextColor(...colors.heading);
+        doc.setFont("helvetica", "bold");
+        doc.text(title, 20, yPos);
+        yPos += 8;
+        doc.setFont("helvetica", "normal");
+      };
+
+      const drawList = (items, numbered = false) => {
+        doc.setFontSize(10);
+        doc.setTextColor(...colors.text);
+        items.forEach((item, index) => {
+          const prefix = numbered ? `${index + 1}. ` : "• ";
+          const text = `${prefix}${safeRender(item)}`;
+          const splitText = doc.splitTextToSize(text, 165);
+          checkPageBreak(splitText.length * 6);
+          doc.text(splitText, 25, yPos);
+          yPos += splitText.length * 6;
+        });
+        yPos += 8;
+      };
+
+      const defaultTableStyles = {
+        theme: "grid",
+        headStyles: { 
+           fillColor: colors.bgLight,
+           textColor: colors.heading, 
+           fontStyle: "bold",
+           lineColor: colors.line,
+           lineWidth: 0.1,
+        },
+        bodyStyles: {
+           textColor: colors.text,
+           lineColor: colors.line,
+           lineWidth: 0.1,
+        },
+        styles: {
+          font: "helvetica",
+          fontSize: 10,
+          cellPadding: 4,
+        },
+      };
 
       // Title
-      doc.setFontSize(24);
-      doc.setTextColor(59, 130, 246);
+      doc.setFontSize(22);
+      doc.setTextColor(...colors.title);
+      doc.setFont("helvetica", "bold");
       doc.text("Repository Analysis Report", 20, yPos);
+
+      yPos += 8;
+      doc.setFontSize(10);
+      doc.setTextColor(...colors.lightText);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated on ${new Date().toLocaleDateString()}`, 20, yPos);
+      
+      yPos += 6;
+      doc.setDrawColor(...colors.line);
+      doc.setLineWidth(0.5);
+      doc.line(20, yPos, 190, yPos);
 
       yPos += 15;
 
-      // Repository Info
-      doc.setFontSize(16);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Repository Information", 20, yPos);
-
-      yPos += 10;
-      doc.setFontSize(11);
-      doc.setTextColor(100, 100, 100);
-
-      // Helper to ensure emojis are properly handled
+      // Helper to ensure strings
       const ensureString = (value) => {
         if (value === null || value === undefined) return "N/A";
         return String(value);
       };
+
+      // Repository Info
+      drawSectionHeader("Repository Information");
 
       const repoInfo = [
         ["Repository Name", ensureString(metadata.name)],
@@ -102,459 +170,242 @@ export default function RepositoryDocumentation({ analysis, onClose }) {
         ["Created", formatDate(metadata.createdAt)],
         ["Last Updated", formatDate(metadata.updatedAt)],
         ["License", ensureString(metadata.license)],
-        [
-          "Repository Size",
-          metadata.size ? `${(metadata.size / 1024).toFixed(2)} MB` : "N/A",
-        ],
+        ["Repository Size", metadata.size ? `${(metadata.size / 1024).toFixed(2)} MB` : "N/A"],
       ];
 
       autoTable(doc, {
         startY: yPos,
-        head: [["Property", "Value"]],
         body: repoInfo,
-        theme: "striped",
-        headStyles: { fillColor: [59, 130, 246] },
-        columnStyles: {
-          0: { cellWidth: 50 },
-          1: { cellWidth: "auto" },
-        },
+        theme: "plain",
         styles: {
           font: "helvetica",
-          fontStyle: "normal",
           fontSize: 10,
+          textColor: colors.text,
+          cellPadding: 3,
+        },
+        columnStyles: {
+          0: { cellWidth: 45, fontStyle: "bold", textColor: colors.heading },
+          1: { cellWidth: "auto" },
         },
       });
 
-      yPos = doc.lastAutoTable.finalY + 15;
+      yPos = doc.lastAutoTable.finalY + 12;
 
       // Topics
       if (metadata.topics && metadata.topics.length > 0) {
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Topics", 20, yPos);
-
-        yPos += 10;
+        checkPageBreak(15);
         doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-
-        const topicsText = metadata.topics.map((t) => `#${t}`).join("  •  ");
-        // Use text with options for better Unicode handling
-        doc.text(topicsText, 20, yPos, {
-          maxWidth: 170,
-          renderingMode: "fill",
-        });
-
-        yPos += 15;
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...colors.heading);
+        doc.text("Topics:", 20, yPos);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...colors.text);
+        const topicsText = metadata.topics.join(", ");
+        const splitText = doc.splitTextToSize(topicsText, 140);
+        doc.text(splitText, 45, yPos);
+        yPos += splitText.length * 6 + 8;
       }
 
       // Statistics
-      doc.setFontSize(16);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Repository Statistics", 20, yPos);
-
-      yPos += 10;
-
+      drawSectionHeader("Repository Statistics");
       const statsData = [
-        [
-          "Total Files",
-          String(stats.totalFiles || countFiles(analysis?.structure) || "0"),
-        ],
-        [
-          "Total Directories",
-          String(stats.totalDirs || countDirs(analysis?.structure) || "0"),
-        ],
+        ["Total Files", String(stats.totalFiles || countFiles(analysis?.structure) || "0")],
+        ["Total Directories", String(stats.totalDirs || countDirs(analysis?.structure) || "0")],
         ["Total Dependencies", String(basicAnalysis.totalDependencies || "0")],
         ["Contributors", String(analysis.contributors?.length || "0")],
         ["Recent Commits", String(analysis.recentCommits?.length || "0")],
       ];
 
       autoTable(doc, {
+        ...defaultTableStyles,
         startY: yPos,
         head: [["Metric", "Value"]],
         body: statsData,
-        theme: "striped",
-        headStyles: { fillColor: [59, 130, 246] },
-        styles: {
-          font: "helvetica",
-          fontSize: 10,
-        },
       });
 
       yPos = doc.lastAutoTable.finalY + 15;
 
-      // Features Detected with emoji support
-      doc.setFontSize(16);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Features Detected", 20, yPos);
-
-      yPos += 10;
-
+      // Features Detected
+      drawSectionHeader("Features Detected");
       const features = [
-        ["Docker", basicAnalysis.hasDocker ? "✅ Yes" : "❌ No"],
-        ["CI/CD", basicAnalysis.hasCiCd ? "✅ Yes" : "❌ No"],
-        ["Tests", basicAnalysis.hasTests ? "✅ Yes" : "❌ No"],
-        ["Linting", basicAnalysis.hasLinting ? "✅ Yes" : "❌ No"],
+        ["Docker", basicAnalysis.hasDocker ? "Yes" : "No"],
+        ["CI/CD", basicAnalysis.hasCiCd ? "Yes" : "No"],
+        ["Tests", basicAnalysis.hasTests ? "Yes" : "No"],
+        ["Linting", basicAnalysis.hasLinting ? "Yes" : "No"],
       ];
 
       autoTable(doc, {
+        ...defaultTableStyles,
         startY: yPos,
         head: [["Feature", "Status"]],
         body: features,
-        theme: "striped",
-        headStyles: { fillColor: [59, 130, 246] },
-        styles: {
-          font: "helvetica",
-          fontSize: 10,
-        },
       });
 
       yPos = doc.lastAutoTable.finalY + 15;
 
-      // Tech Stack with emoji support
-      if (
-        aiAnalysis.mainTechnologies &&
-        aiAnalysis.mainTechnologies.length > 0
-      ) {
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Technology Stack", 20, yPos);
-
-        yPos += 10;
-
-        const techRows = aiAnalysis.mainTechnologies.map((tech) => [
-          safeRender(tech),
-        ]);
-
+      // Tech Stack
+      if (aiAnalysis.mainTechnologies && aiAnalysis.mainTechnologies.length > 0) {
+        drawSectionHeader("Technology Stack");
+        const techRows = aiAnalysis.mainTechnologies.map((tech) => [safeRender(tech)]);
         autoTable(doc, {
+          ...defaultTableStyles,
           startY: yPos,
           head: [["Technologies"]],
           body: techRows,
-          theme: "striped",
-          headStyles: { fillColor: [59, 130, 246] },
-          styles: {
-            font: "helvetica",
-            fontSize: 10,
-          },
         });
-
         yPos = doc.lastAutoTable.finalY + 15;
       }
 
       // Build Tools & Frameworks
       if (
-        (enhancedAnalysis.buildTools &&
-          enhancedAnalysis.buildTools.length > 0) ||
+        (enhancedAnalysis.buildTools && enhancedAnalysis.buildTools.length > 0) ||
         (enhancedAnalysis.frameworks && enhancedAnalysis.frameworks.length > 0)
       ) {
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Build Tools & Frameworks", 20, yPos);
-
-        yPos += 10;
-
+        drawSectionHeader("Build Tools & Frameworks");
         const toolsData = [];
-
-        if (
-          enhancedAnalysis.buildTools &&
-          enhancedAnalysis.buildTools.length > 0
-        ) {
+        if (enhancedAnalysis.buildTools && enhancedAnalysis.buildTools.length > 0) {
           toolsData.push([
             "Build Tools",
             enhancedAnalysis.buildTools.map((t) => safeRender(t)).join(", "),
           ]);
         }
-
-        if (
-          enhancedAnalysis.frameworks &&
-          enhancedAnalysis.frameworks.length > 0
-        ) {
+        if (enhancedAnalysis.frameworks && enhancedAnalysis.frameworks.length > 0) {
           toolsData.push([
             "Frameworks",
             enhancedAnalysis.frameworks.map((f) => safeRender(f)).join(", "),
           ]);
         }
-
         autoTable(doc, {
           startY: yPos,
           body: toolsData,
-          theme: "striped",
+          theme: "plain",
           columnStyles: {
-            0: { cellWidth: 50, fontStyle: "bold" },
-            1: { cellWidth: "auto" },
+            0: { cellWidth: 45, fontStyle: "bold", textColor: colors.heading },
+            1: { cellWidth: "auto", textColor: colors.text },
           },
-          styles: {
-            font: "helvetica",
-            fontSize: 10,
-          },
+          styles: { font: "helvetica", fontSize: 10, cellPadding: 3 },
         });
-
         yPos = doc.lastAutoTable.finalY + 15;
       }
 
-      // Architecture
-      doc.setFontSize(16);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Architecture Analysis", 20, yPos);
-
-      yPos += 10;
-
+      // Architecture Analysis
+      drawSectionHeader("Architecture Analysis");
       const archData = [
         ["Project Type", safeRender(aiAnalysis.projectType) || "N/A"],
-        [
-          "Architecture Style",
-          safeRender(aiAnalysis.architectureStyle) || "N/A",
-        ],
+        ["Architecture Style", safeRender(aiAnalysis.architectureStyle) || "N/A"],
       ];
-
       autoTable(doc, {
         startY: yPos,
         body: archData,
-        theme: "striped",
+        theme: "plain",
         columnStyles: {
-          0: { cellWidth: 50, fontStyle: "bold" },
-          1: { cellWidth: "auto" },
+          0: { cellWidth: 45, fontStyle: "bold", textColor: colors.heading },
+          1: { cellWidth: "auto", textColor: colors.text },
         },
-        styles: {
-          font: "helvetica",
-          fontSize: 10,
-        },
+        styles: { font: "helvetica", fontSize: 10, cellPadding: 3 },
       });
+      yPos = doc.lastAutoTable.finalY + 8;
 
-      yPos = doc.lastAutoTable.finalY + 10;
-
-      // Architecture Layers
       if (aiAnalysis.layers && aiAnalysis.layers.length > 0) {
-        doc.setFontSize(14);
-        doc.setTextColor(0, 0, 0);
+        checkPageBreak(12);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...colors.heading);
         doc.text("Architecture Layers:", 20, yPos);
-
-        yPos += 7;
-        doc.setFontSize(11);
-        doc.setTextColor(100, 100, 100);
-
-        aiAnalysis.layers.forEach((layer) => {
-          const text = `• ${safeRender(layer)}`;
-          // Split text to handle long strings with emojis
-          const splitText = doc.splitTextToSize(text, 170);
-          doc.text(splitText, 25, yPos);
-          yPos += splitText.length * 7;
-        });
-
-        yPos += 5;
+        yPos += 6;
+        drawList(aiAnalysis.layers);
       }
 
       // Key Features
       if (aiAnalysis.keyFeatures && aiAnalysis.keyFeatures.length > 0) {
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Key Features", 20, yPos);
-
-        yPos += 10;
-        doc.setFontSize(11);
-        doc.setTextColor(100, 100, 100);
-
-        aiAnalysis.keyFeatures.forEach((feature) => {
-          const text = `• ${safeRender(feature)}`;
-          const splitText = doc.splitTextToSize(text, 170);
-          doc.text(splitText, 20, yPos);
-          yPos += splitText.length * 7;
-        });
-
-        yPos += 5;
+        drawSectionHeader("Key Features");
+        drawList(aiAnalysis.keyFeatures);
       }
 
       // Data Flow
       if (aiAnalysis.dataFlow && aiAnalysis.dataFlow.length > 0) {
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Data Flow", 20, yPos);
-
-        yPos += 10;
-        doc.setFontSize(11);
-        doc.setTextColor(100, 100, 100);
-
-        aiAnalysis.dataFlow.forEach((flow) => {
-          const text = `• ${safeRender(flow)}`;
-          const splitText = doc.splitTextToSize(text, 170);
-          doc.text(splitText, 20, yPos);
-          yPos += splitText.length * 7;
-        });
-
-        yPos += 5;
+        drawSectionHeader("Data Flow");
+        drawList(aiAnalysis.dataFlow);
       }
 
       // Detected Patterns
-      if (
-        aiAnalysis.patternsDetected &&
-        aiAnalysis.patternsDetected.length > 0
-      ) {
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Detected Patterns", 20, yPos);
-
-        yPos += 10;
-        doc.setFontSize(11);
-        doc.setTextColor(100, 100, 100);
-
-        aiAnalysis.patternsDetected.forEach((pattern) => {
-          const text = `• ${safeRender(pattern)}`;
-          doc.text(text, 20, yPos);
-          yPos += 7;
-        });
-
-        yPos += 5;
+      if (aiAnalysis.patternsDetected && aiAnalysis.patternsDetected.length > 0) {
+        drawSectionHeader("Detected Patterns");
+        drawList(aiAnalysis.patternsDetected);
       }
 
       // Improvement Suggestions
-      if (
-        aiAnalysis.improvementSuggestions &&
-        aiAnalysis.improvementSuggestions.length > 0
-      ) {
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Improvement Suggestions", 20, yPos);
-
-        yPos += 10;
-        doc.setFontSize(11);
-        doc.setTextColor(100, 100, 100);
-
-        aiAnalysis.improvementSuggestions.forEach((suggestion, index) => {
-          const text = `${index + 1}. ${safeRender(suggestion)}`;
-          const splitText = doc.splitTextToSize(text, 170);
-          doc.text(splitText, 20, yPos);
-          yPos += splitText.length * 7;
-        });
-
-        yPos += 5;
+      if (aiAnalysis.improvementSuggestions && aiAnalysis.improvementSuggestions.length > 0) {
+        drawSectionHeader("Improvement Suggestions");
+        drawList(aiAnalysis.improvementSuggestions, true);
       }
 
       // Recent Commits
       if (analysis.recentCommits && analysis.recentCommits.length > 0) {
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Recent Commits", 20, yPos);
-
-        yPos += 10;
-
-        const commitsData = analysis.recentCommits.map((commit) => [
+        drawSectionHeader("Recent Commits");
+        const commitsData = analysis.recentCommits.slice(0, 8).map((commit) => [
           commit.sha?.substring(0, 7) || "N/A",
-          commit.message?.substring(0, 40) +
-            (commit.message?.length > 40 ? "..." : ""),
+          commit.message?.substring(0, 50) + (commit.message?.length > 50 ? "..." : ""),
           commit.author || "N/A",
           formatDate(commit.date),
         ]);
-
         autoTable(doc, {
+          ...defaultTableStyles,
           startY: yPos,
           head: [["Hash", "Message", "Author", "Date"]],
           body: commitsData,
-          theme: "striped",
-          headStyles: { fillColor: [59, 130, 246] },
           columnStyles: {
-            0: { cellWidth: 25 },
+            0: { cellWidth: 20 },
             1: { cellWidth: 70 },
-            2: { cellWidth: 30 },
+            2: { cellWidth: 40 },
             3: { cellWidth: 35 },
           },
-          styles: {
-            font: "helvetica",
-            fontSize: 9,
-          },
         });
-
         yPos = doc.lastAutoTable.finalY + 15;
       }
 
       // Contributors
       if (analysis.contributors && analysis.contributors.length > 0) {
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Top Contributors", 20, yPos);
-
-        yPos += 10;
-
-        const contributorsData = analysis.contributors.map((contributor) => [
+        drawSectionHeader("Top Contributors");
+        const contributorsData = analysis.contributors.slice(0, 10).map((contributor) => [
           contributor.login || "N/A",
           String(contributor.contributions || "0"),
         ]);
-
         autoTable(doc, {
+          ...defaultTableStyles,
           startY: yPos,
           head: [["Username", "Contributions"]],
           body: contributorsData,
-          theme: "striped",
-          headStyles: { fillColor: [59, 130, 246] },
-          styles: {
-            font: "helvetica",
-            fontSize: 10,
-          },
         });
-
         yPos = doc.lastAutoTable.finalY + 15;
       }
 
       // File Distribution
       if (stats.fileTypes && Object.keys(stats.fileTypes).length > 0) {
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text("File Distribution", 20, yPos);
-
-        yPos += 10;
-
+        drawSectionHeader("File Distribution");
         const fileTypesData = Object.entries(stats.fileTypes)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 10)
           .map(([ext, count]) => {
-            const percentage = ((count / stats.totalFiles) * 100).toFixed(1);
+            const percentage = stats.totalFiles ? ((count / stats.totalFiles) * 100).toFixed(1) : "0.0";
             return [`.${ext}`, String(count), `${percentage}%`];
           });
-
         autoTable(doc, {
+          ...defaultTableStyles,
           startY: yPos,
           head: [["Extension", "Count", "Percentage"]],
           body: fileTypesData,
-          theme: "striped",
-          headStyles: { fillColor: [59, 130, 246] },
-          styles: {
-            font: "helvetica",
-            fontSize: 10,
-          },
         });
+      }
+
+      // Add Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(...colors.lightText);
+        doc.text(`Page ${i} of ${pageCount}`, 190, 285, { align: "right" });
       }
 
       // Save the PDF
