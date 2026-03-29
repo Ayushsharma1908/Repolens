@@ -11,20 +11,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const oauthToken = params.get('token');
-
       // ✅ load stored user instantly
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         setUser(JSON.parse(storedUser));
-      }
-
-      // ✅ OAuth flow
-      if (oauthToken) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-        await fetchUserFromToken(oauthToken);
-        return;
       }
 
       const token = localStorage.getItem('token');
@@ -39,29 +29,7 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
-  // Called after OAuth redirect — fetch user profile using token
-  const fetchUserFromToken = async (token) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/verify`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
-      } else {
-        logout();
-      }
-    } catch (error) {
-      console.error('Token verification failed:', error);
-      setLoading(false);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const verifyToken = async (token) => {
     try {
