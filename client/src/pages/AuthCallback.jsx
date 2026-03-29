@@ -2,6 +2,9 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+const API_URL = import.meta.env.VITE_API_URL || "https://repolens-xac5.onrender.com";
+
 export default function AuthCallback() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -12,7 +15,7 @@ useEffect(() => {
   const token = params.get("token");
 
   if (token) {
-    fetch("http://localhost:5000/auth/verify", {
+    fetch(`${API_URL}/auth/verify`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

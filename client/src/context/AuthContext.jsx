@@ -3,6 +3,8 @@ import { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
 
+const API_URL = import.meta.env.VITE_API_URL || "https://repolens-xac5.onrender.com";
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,7 @@ export function AuthProvider({ children }) {
   // Called after OAuth redirect — fetch user profile using token
   const fetchUserFromToken = async (token) => {
     try {
-      const response = await fetch('http://localhost:5000/auth/verify', {
+      const response = await fetch(`${API_URL}/auth/verify`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -63,7 +65,7 @@ export function AuthProvider({ children }) {
 
   const verifyToken = async (token) => {
     try {
-      const response = await fetch('http://localhost:5000/auth/verify', {
+      const response = await fetch(`${API_URL}/auth/verify`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

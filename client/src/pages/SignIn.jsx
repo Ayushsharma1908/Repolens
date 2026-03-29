@@ -5,6 +5,8 @@ import RepoLensLogo from "../assets/Repolenslogo.svg";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
+const API_URL = import.meta.env.VITE_API_URL || "https://repolens-xac5.onrender.com";
+
 export default function SignIn() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -15,7 +17,7 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
 
   const handleGoogleSignIn = () => {
-    window.location.href = "http://localhost:5000/auth/google";
+    window.location.href = `${API_URL}/auth/google`;
   };
 
   const handleSignIn = async (e) => {
@@ -24,7 +26,7 @@ export default function SignIn() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/auth/signin", {
+      const response = await fetch(`${API_URL}/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

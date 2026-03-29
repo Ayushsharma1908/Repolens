@@ -5,6 +5,8 @@ import { HiEye, HiEyeOff } from "react-icons/hi";
 import RepoLensLogo from "../assets/Repolenslogo.svg";
 import { useAuth } from "../context/AuthContext";
 
+const API_URL = import.meta.env.VITE_API_URL || "https://repolens-xac5.onrender.com";
+
 export default function SignUp() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -14,7 +16,7 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
 
   const handleGoogleSignUp = () => {
-    window.location.href = "http://localhost:5000/auth/google";
+    window.location.href = `${API_URL}/auth/google`;
   };
 
   const handleChange = (e) => {
@@ -28,7 +30,7 @@ export default function SignUp() {
 
     try {
       // FIX: actually call the backend instead of just console.log
-      const response = await fetch("http://localhost:5000/auth/signup", {
+      const response = await fetch(`${API_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

@@ -5,6 +5,8 @@ import AnalysisSkeleton from "./AnalysisSkeleton";
 import UserProfile from "../components/UserProfile";
 import { useAuth } from "../context/AuthContext";
 
+const API_URL = import.meta.env.VITE_API_URL || "https://repolens-xac5.onrender.com";
+
 export default function AnalyzePage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();  
@@ -19,7 +21,7 @@ export default function AnalyzePage() {
     const fetchHistory = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/analyses', {
+        const res = await fetch(`${API_URL}/analyses`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
@@ -46,7 +48,7 @@ export default function AnalyzePage() {
     setError(null);
 
     try {
-      const response = await fetch("http://localhost:5000/analyze", {
+      const response = await fetch(`${API_URL}/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -64,7 +66,7 @@ export default function AnalyzePage() {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          await fetch('http://localhost:5000/analyses/save', {
+          await fetch(`${API_URL}/analyses/save`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
