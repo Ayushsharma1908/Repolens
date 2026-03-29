@@ -20,8 +20,9 @@ const app = express();
 // ─────────────────────────────────────────────
 // MIDDLEWARE — only once each
 // ─────────────────────────────────────────────
+const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: [clientUrl, clientUrl.replace(/\/$/, '')],
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
